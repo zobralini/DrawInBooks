@@ -30,11 +30,12 @@ Upload `build/libs/drawinbooks-0.2.0.jar` — **not** the `-sources` one. The
 same jar works on both a client and a Fabric server.
 
 The Paper plugin is a separate Gradle project, because it builds against the
-Bukkit API instead of Minecraft:
+Bukkit API instead of Minecraft. It has its own wrapper, so run it from inside
+that folder (PowerShell has no `&&` — use two lines):
 
 ```
 cd paper
-gradlew build
+.\gradlew build
 ```
 
 That produces `paper/build/libs/drawinbooks-paper-0.2.0.jar`. Upload it as a
