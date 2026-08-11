@@ -5,17 +5,15 @@ accounts. Nothing here has been run for you.
 
 ## 1. Push to GitHub
 
-The repo is already initialised with a first commit on `main`. Create an empty
-repository named **DrawInBooks** on GitHub (no README, no license, no
-`.gitignore` — they already exist here), then:
+The repo is initialised with commits on `main`, and the remote is already set
+to <https://github.com/zobralini/DrawInBooks>. All that's left is:
 
 ```
-git remote add origin https://github.com/<your-username>/DrawInBooks.git
 git push -u origin main
 ```
 
-If your GitHub username isn't `zobra`, also fix the three URLs in
-`src/main/resources/fabric.mod.json` (`contact` block) before pushing.
+This has to run on your machine — the credentials are yours, and were never
+needed here.
 
 The included workflow (`.github/workflows/build.yml`) builds and runs the tests
 on every push, and uploads the jar as a build artifact.

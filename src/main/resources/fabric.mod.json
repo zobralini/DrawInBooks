@@ -9,8 +9,8 @@
 	],
 	"contact": {
 		"homepage": "https://modrinth.com/mod/draw-in-books",
-		"sources": "https://github.com/zobra/DrawInBooks",
-		"issues": "https://github.com/zobra/DrawInBooks/issues"
+		"sources": "https://github.com/zobralini/DrawInBooks",
+		"issues": "https://github.com/zobralini/DrawInBooks/issues"
 	},
 	"license": "MIT",
 	"icon": "assets/drawinbooks/icon.png",
