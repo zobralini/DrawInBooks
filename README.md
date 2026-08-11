@@ -1,9 +1,15 @@
 # Draw in Books
 
-Fabric **client mod** for Minecraft **26.2** that lets players draw simple
-1-bit sketches on book & quill pages, fully independent of the vanilla text
-layer. Designed as a minimal, low-risk feature pitch: no new items, no new
-textures, one data component, one mixin.
+Fabric **client mod** for Minecraft **26.2** that lets players draw on book &
+quill pages, fully independent of the vanilla text layer. Designed as a
+minimal, low-risk feature pitch: no new items, no new textures, no registry
+entries, no packets — two mixins and a fixed-size bitmap that rides along on
+the book itself.
+
+**The mod is optional.** Drawings live inside vanilla's `minecraft:custom_data`,
+so a player without it sees an ordinary book, and nothing unknown ever goes
+over the wire. Two players who both have it see the same drawing on the same
+book.
 
 ## Building & running
 
