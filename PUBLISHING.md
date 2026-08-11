@@ -29,30 +29,18 @@ The file to upload is `build/libs/drawinbooks-0.1.0.jar` — **not** the
 
 ## 3. Create the Modrinth project
 
-- Project type: **Mod**
-- Slug: `draw-in-books` (this is what `fabric.mod.json` links to)
-- Summary: *Draw on book and quill pages, in three colors, without touching
-  the text.*
-- License: **MIT**
-- Client side: **required** · Server side: **unsupported**
-- Categories: `utility`, `decoration`
-- Loader: **Fabric** · Minecraft: **26.2**
-- Icon: `src/main/resources/assets/drawinbooks/icon.png`
+Every field value and the full page body are in **[MODRINTH.md](MODRINTH.md)**,
+written to be pasted straight in. Short version: name *Draw In Books*, slug
+`draw-in-books`, MIT, client required / server unsupported, Fabric 26.2,
+upload `drawinbooks-0.1.0.jar` as a **beta** with Fabric API as a required
+dependency.
 
-Suggested description body — the README covers all of it, but Modrinth
-readers mostly want the first three sections: what it does, the controls
-table, and the "optional mod" paragraph.
+### Prior art
 
-### Worth stating on the page
-
-Two things are unusual about this mod and are worth being upfront about,
-because they're what a reviewer would ask:
-
-- **It is optional.** Drawings live in vanilla's `custom_data`, so a player
-  without the mod sees an ordinary book and cannot be disconnected by it.
-- **Multiplayer is limited.** On a vanilla server in survival, the drawing
-  stays on your client — the vanilla book packet only carries text. It works
-  in singleplayer, in creative, and on servers running the mod.
+[Scriboodle](https://modrinth.com/mod/scriboodle) already does drawing in
+books. That's fine — but it's worth leading the page with what's actually
+different here rather than with "draw in books", which is why the copy in
+MODRINTH.md opens on the vanilla feel and on the mod being optional.
 
 ## 4. Version bumps
 

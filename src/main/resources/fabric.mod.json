@@ -2,7 +2,7 @@
 	"schemaVersion": 1,
 	"id": "drawinbooks",
 	"version": "${version}",
-	"name": "Draw in Books",
+	"name": "Draw In Books",
 	"description": "Draw on book & quill pages. Fully independent of the vanilla text layer; drawings ride along on the book item inside vanilla's custom_data, so the mod is optional - players without it simply see no drawing.",
 	"authors": [
 		"zobra"
