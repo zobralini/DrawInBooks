@@ -1,5 +1,6 @@
 package com.drawinbooks.client;
 
+import com.drawinbooks.client.compat.ScribbleCompat;
 import com.drawinbooks.client.draw.BookScreenScale;
 import com.drawinbooks.client.draw.DrawingPersistence;
 
@@ -10,5 +11,9 @@ public class DrawInBooksClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		DrawingPersistence.initialize();
 		BookScreenScale.initialize();
+
+		// Does nothing unless Scribble is installed, in which case it replaces
+		// the book screen entirely and our mixins would never run.
+		ScribbleCompat.initialize();
 	}
 }

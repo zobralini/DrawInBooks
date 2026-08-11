@@ -26,7 +26,7 @@ The mod:
 gradlew build
 ```
 
-Upload `build/libs/drawinbooks-0.2.0.jar` — **not** the `-sources` one. The
+Upload `build/libs/drawinbooks-0.2.1.jar` — **not** the `-sources` one. The
 same jar works on both a client and a Fabric server.
 
 The Paper plugin is a separate Gradle project, because it builds against the
@@ -38,7 +38,7 @@ cd paper
 .\gradlew build
 ```
 
-That produces `paper/build/libs/drawinbooks-paper-0.2.0.jar`. Upload it as a
+That produces `paper/build/libs/drawinbooks-paper-0.2.1.jar`. Upload it as a
 second file on the same Modrinth version, or as its own project — Modrinth
 allows additional files per version, which is the simpler option.
 
@@ -47,7 +47,7 @@ allows additional files per version, which is the simpler option.
 Every field value and the full page body are in **[MODRINTH.md](MODRINTH.md)**,
 written to be pasted straight in. Short version: name *Draw In Books*, slug
 `draw-in-books`, MIT, client required / server optional, Fabric 26.2, upload
-`drawinbooks-0.2.0.jar` as a **beta** with Fabric API as a required
+`drawinbooks-0.2.1.jar` as a **beta** with Fabric API as a required
 dependency, and attach the Paper plugin jar as a second file.
 
 ### Prior art

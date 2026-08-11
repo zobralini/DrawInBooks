@@ -36,6 +36,9 @@ public final class DrawCanvasWidget extends AbstractWidget {
 	private final DrawingSession session;
 	private final IntSupplier currentPage;
 
+	/** False on reading screens, where the canvas renders but takes no input. */
+	private final boolean editable;
+
 	/** True while a stroke that began inside the canvas is still held down. */
 	private boolean strokeActive;
 	private boolean strokeErasing;
@@ -43,9 +46,14 @@ public final class DrawCanvasWidget extends AbstractWidget {
 	private int lastPy = -1;
 
 	public DrawCanvasWidget(int x, int y, DrawingSession session, IntSupplier currentPage) {
+		this(x, y, session, currentPage, true);
+	}
+
+	public DrawCanvasWidget(int x, int y, DrawingSession session, IntSupplier currentPage, boolean editable) {
 		super(x, y, BookLayout.CANVAS_WIDTH, BookLayout.CANVAS_HEIGHT, Component.empty());
 		this.session = session;
 		this.currentPage = currentPage;
+		this.editable = editable;
 	}
 
 	@Override
@@ -54,14 +62,16 @@ public final class DrawCanvasWidget extends AbstractWidget {
 		int py = BookLayout.pixelY(mouseY - getY());
 		boolean overCanvas = px >= 0 && py >= 0;
 
-		handleInput(px, py, overCanvas);
+		if (this.editable) {
+			handleInput(px, py, overCanvas);
+		}
 		CanvasRenderer.renderInk(
 				graphics, getX(), getY(),
 				this.session.peekPage(this.currentPage.getAsInt()));
 
 		// Cursor preview in the pen's color, showing exactly which pixels the
 		// brush would hit.
-		if (overCanvas && this.session.isDrawMode()) {
+		if (this.editable && overCanvas && this.session.isDrawMode()) {
 			int size = this.session.brushSize(this.session.tool());
 			int before = (size - 1) / 2;
 			int after = size / 2;

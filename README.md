@@ -245,6 +245,26 @@ Being a pure client mod:
 Trading, chests and shulkers follow from the data being on the item: two
 players who both have the mod see the same drawing on the same book.
 
+### Scribble compatibility
+
+[Scribble](https://modrinth.com/mod/scribble) doesn't extend the vanilla book
+screen — it *replaces* it with `ScribbleBookEditScreen`. With it installed the
+mixins here never run, so before this was handled the drawing layer was simply
+absent: no toolbar, and existing drawings invisible.
+
+`ScribbleCompat` attaches the same toolbar and canvas to Scribble's screens
+through Fabric's generic screen events, reading its layout by reflection —
+two public fields (`currentPage`, `pagesToShow`) and two public methods
+(`getBackgroundX/Y`). So this mod neither compiles against nor depends on
+Scribble: if it's absent none of that code runs, and if it changes its
+internals drawing quietly stops working on its screens instead of crashing.
+
+Its page area is the same 114×128 as vanilla, so the canvas needs no separate
+geometry, and its two-page mode is handled by adding one canvas per visible
+page. One gap worth knowing: the space-reservation that keeps drawing-only
+pages alive through signing needs the screen's page list, which Scribble owns —
+on its screens, put a character on a page you only drew on.
+
 ### Server side
 
 `DrawingSyncReceiver` (Fabric) and `paper/` (Paper plugin) are two

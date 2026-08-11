@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1
+
+- Fixed: with [Scribble](https://modrinth.com/mod/scribble) installed, none of
+  this mod appeared at all — no toolbar, and existing drawings invisible.
+  Scribble replaces the vanilla book screen with its own class, so the mixins
+  here never ran. The toolbar and canvas now attach to its screens too, by
+  reflection, without depending on Scribble in any way. Its two-page mode is
+  supported.
+
 ## 0.2.0
 
 **Drawings now save on servers.** Until now they only survived in singleplayer
