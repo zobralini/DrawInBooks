@@ -1,0 +1,43 @@
+plugins {
+	id 'java'
+}
+
+group = 'com.drawinbooks'
+version = '0.2.0'
+
+repositories {
+	mavenCentral()
+	maven {
+		name = 'papermc'
+		url = 'https://repo.papermc.io/repository/maven-public/'
+	}
+}
+
+dependencies {
+	compileOnly 'io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT'
+}
+
+// The plugin only uses the Bukkit API and plain Java, so it is compiled
+// against an older Paper API on purpose: nothing here touches version
+// specific internals, and a lower target keeps it loading on more servers.
+java {
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.encoding = 'UTF-8'
+}
+
+processResources {
+	def props = [version: project.version]
+	inputs.properties props
+
+	filesMatching('plugin.yml') {
+		expand props
+	}
+}
+
+jar {
+	archiveBaseName = 'drawinbooks-paper'
+}

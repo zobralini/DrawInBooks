@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.2.0
+
+**Drawings now save on servers.** Until now they only survived in singleplayer
+and in creative — on a server in survival a drawing was wiped by the next
+inventory sync. That was not a permissions problem: vanilla simply has no
+packet that lets a survival player attach data to an item, so op made no
+difference. There are now two server-side implementations, and installing
+either one makes it work in survival for everyone, with no permissions:
+
+- **Fabric server**: the same jar, installed server side
+- **Paper server**: a plugin, in `paper/` — built separately
+
+Neither trusts the client: the payload is length-capped by the codec, the blob
+must match the fixed format exactly, the target must be a book the sender is
+holding, and each player is rate limited.
+
+Also in this release:
+
+- Storage format changed to a single flat byte array at the Bukkit persistent
+  data path inside `custom_data`, so the mod and the plugin read and write the
+  same bytes in the same place. **Drawings made with 0.1.x will not show.**
+- The mod now loads on servers as well as clients
+
 ## 0.1.1
 
 - Fixed: pressing **Sign** straight after drawing lost the drawing, and it only

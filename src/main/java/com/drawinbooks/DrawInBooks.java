@@ -1,15 +1,20 @@
 package com.drawinbooks;
 
+import com.drawinbooks.net.DrawingSyncReceiver;
+
 import net.fabricmc.api.ModInitializer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Common entrypoint. There is nothing to register: drawings are stored in
- * vanilla's {@code minecraft:custom_data}, so the mod adds no registry
- * entries and no packets, and can be installed or removed on either side
- * without affecting anyone else.
+ * Common entrypoint, running on both sides.
+ *
+ * <p>No registry entries are added: drawings live in vanilla's
+ * {@code minecraft:custom_data}, so nothing here changes what a client without
+ * the mod sees or receives. The only thing registered is one serverbound
+ * payload, which is what lets a survival player's drawing reach a server that
+ * has the mod installed.
  */
 public class DrawInBooks implements ModInitializer {
 	public static final String MOD_ID = "drawinbooks";
@@ -17,5 +22,6 @@ public class DrawInBooks implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		DrawingSyncReceiver.initialize();
 	}
 }

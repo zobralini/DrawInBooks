@@ -1,10 +1,12 @@
 package com.drawinbooks.client.mixin;
 
+import java.util.List;
+
 import com.drawinbooks.client.draw.BookLayout;
 import com.drawinbooks.client.draw.BookScreenScale;
 import com.drawinbooks.client.draw.CanvasRenderer;
 import com.drawinbooks.component.BookDrawingStorage;
-import com.drawinbooks.component.PageDrawings;
+import com.drawinbooks.component.DrawingBlob;
 
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
@@ -59,20 +61,25 @@ public abstract class BookViewScreenMixin extends Screen {
 			return;
 		}
 
-		BookDrawingStorage.Stored stored = BookDrawingStorage.read(book).orElse(null);
+		DrawingBlob.Decoded stored = BookDrawingStorage.read(book).orElse(null);
 
 		if (stored == null) {
 			return;
 		}
 
-		PageDrawings drawings = stored.drawings();
+		List<byte[]> pages = stored.pages();
 
-		ScreenEvents.afterExtract(self).register((screen, graphics, mouseX, mouseY, tickProgress) ->
+		ScreenEvents.afterExtract(self).register((screen, graphics, mouseX, mouseY, tickProgress) -> {
+			int page = this.currentPage;
+
+			if (page >= 0 && page < pages.size()) {
 				CanvasRenderer.renderInk(
 						graphics,
 						BookLayout.bookLeft(this.width) + BookLayout.CANVAS_X,
 						BookLayout.CANVAS_Y,
-						drawings.copyPage(this.currentPage)));
+						pages.get(page));
+			}
+		});
 	}
 
 	private ItemStack drawinbooks$heldBook() {

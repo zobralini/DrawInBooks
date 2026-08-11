@@ -1,12 +1,15 @@
 package com.drawinbooks.client.draw;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.drawinbooks.DrawInBooks;
 import com.drawinbooks.component.BookDrawingStorage;
-import com.drawinbooks.component.PageDrawings;
+import com.drawinbooks.component.DrawingBlob;
+import com.drawinbooks.net.DrawingSyncPayload;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -18,30 +21,27 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * Writes the finished drawing (and its ink color) into the book's components.
+ * Writes the finished drawing onto the book.
  *
- * <p>This is a pure client mod, so the honest reach of persistence is:
+ * <p>Getting it to stick depends entirely on what is on the other end:
  * <ul>
- *   <li><b>Singleplayer</b>: the integrated server runs in this JVM with the
- *       mod loaded, so we also set the component on the server-side copy of
- *       the held item; it then saves with the world like any component.</li>
- *   <li><b>Multiplayer, creative</b>: the creative set-item packet carries
- *       full component data and vanilla servers accept it.</li>
- *   <li><b>Multiplayer, survival</b>: the vanilla book-edit packet only
- *       carries text pages, so the drawing stays local.</li>
+ *   <li><b>Singleplayer / LAN host</b> - the integrated server is in this JVM,
+ *       so the drawing is written straight to the authoritative copy.</li>
+ *   <li><b>Server running this mod (or the Paper plugin)</b> - the drawing is
+ *       sent as a {@link DrawingSyncPayload}, validated server side, and
+ *       stored. This is the only path that works in survival.</li>
+ *   <li><b>Vanilla server, creative</b> - the creative set-slot packet carries
+ *       arbitrary item data and vanilla accepts it from creative players.</li>
+ *   <li><b>Vanilla server, survival</b> - nothing can be done. The vanilla
+ *       book packet carries only text, so the drawing exists on this client
+ *       until the next inventory sync overwrites it. The player is told once,
+ *       rather than left wondering why their drawing vanished.</li>
  * </ul>
  *
- * <p>Signing complicates this: vanilla replaces the {@code writable_book}
- * with a freshly built {@code written_book} <em>after</em> the screen closes,
- * which drops any component we set beforehand. So instead of writing once, we
- * re-apply for a short window of client ticks afterwards.
- *
- * <p>That retry is deliberately narrow, because a drawing must never land on
- * the wrong book: identical-looking books are still separate items. The retry
- * is locked to the exact inventory slot the book was edited in, and only
- * touches either the very same {@link ItemStack} instance or a
- * {@code written_book} that replaced it in that slot - never some other book
- * the player happens to select in the meantime.
+ * <p>Signing complicates all of the above: vanilla builds a <em>new</em>
+ * written book after the screen closes, so the write is repeated for a couple
+ * of seconds, locked to the exact slot and item it started on so it can never
+ * land on a different book.
  */
 public final class DrawingPersistence {
 	/**
@@ -56,12 +56,14 @@ public final class DrawingPersistence {
 	/** Inventory slot index of the offhand, as used by creative set-slot packets. */
 	private static final int OFFHAND_PACKET_SLOT = 45;
 
-	private static PageDrawings pendingDrawings;
-	private static int pendingColorIndex;
+	private static byte[] pendingBlob;
 	private static InteractionHand pendingHand;
 	private static int pendingSlot = -1;
 	private static ItemStack pendingStack;
 	private static int ticksLeft;
+
+	/** So the "this server can't store it" notice is logged once per session. */
+	private static boolean warnedAboutServer;
 
 	private DrawingPersistence() {
 	}
@@ -70,17 +72,11 @@ public final class DrawingPersistence {
 		ClientTickEvents.END_CLIENT_TICK.register(DrawingPersistence::onClientTick);
 	}
 
-	private static boolean isBook(ItemStack stack) {
-		return stack.is(Items.WRITABLE_BOOK) || stack.is(Items.WRITTEN_BOOK);
-	}
-
 	/**
-	 * Applies the drawing to the book in the given hand and keeps re-applying
-	 * briefly so the signed copy inherits it.
-	 *
-	 * @param drawings snapshot to store, or {@code null} to remove the component
+	 * @param pages      page bitmaps, or null/empty to remove the drawing
+	 * @param inkColor   the pen color to remember for next time
 	 */
-	public static void persist(Minecraft minecraft, InteractionHand hand, PageDrawings drawings, InkColor inkColor) {
+	public static void persist(Minecraft minecraft, InteractionHand hand, List<byte[]> pages, InkColor inkColor) {
 		LocalPlayer player = minecraft.player;
 
 		if (player == null) {
@@ -89,22 +85,19 @@ public final class DrawingPersistence {
 
 		ItemStack stack = player.getItemInHand(hand);
 
-		if (!isBook(stack)) {
+		if (!BookDrawingStorage.isBook(stack)) {
 			return;
 		}
 
-		pendingDrawings = drawings;
-		pendingColorIndex = inkColor == null ? 0 : inkColor.ordinal();
+		pendingBlob = pages == null || pages.isEmpty()
+				? null
+				: DrawingBlob.encode(pages, inkColor == null ? 0 : inkColor.ordinal());
 		pendingHand = hand;
 		pendingStack = stack;
 		pendingSlot = hand == InteractionHand.OFF_HAND ? -1 : player.getInventory().getSelectedSlot();
 		ticksLeft = REAPPLY_TICKS;
 
-		if (!applyOnce(minecraft) && drawings != null) {
-			// Remote survival server: the vanilla book-edit packet carries only
-			// text pages, so the drawing cannot legitimately reach the server.
-			DrawInBooks.LOGGER.info("Drawing stored on the client-side stack only (remote survival server)");
-		}
+		applyOnce(minecraft, true);
 	}
 
 	private static void onClientTick(Minecraft minecraft) {
@@ -113,102 +106,112 @@ public final class DrawingPersistence {
 		}
 
 		ticksLeft--;
-		applyOnce(minecraft);
+		applyOnce(minecraft, false);
 
 		if (ticksLeft == 0) {
-			pendingDrawings = null;
+			pendingBlob = null;
 			pendingStack = null;
 			pendingSlot = -1;
 		}
 	}
 
 	/**
-	 * @return true if the component reached an authoritative copy -
-	 *         singleplayer server or creative packet
+	 * @param firstAttempt true for the call made at save time - packets are
+	 *                     only sent then, so a retry can never turn into a
+	 *                     packet every tick
 	 */
-	private static boolean applyOnce(Minecraft minecraft) {
+	private static void applyOnce(Minecraft minecraft, boolean firstAttempt) {
 		LocalPlayer player = minecraft.player;
 
 		if (player == null || pendingHand == null) {
-			return false;
+			return;
 		}
 
 		ItemStack stack = targetStack(player);
 
 		if (stack == null) {
-			return false;
+			return;
 		}
 
-		BookDrawingStorage.Stored current = BookDrawingStorage.read(stack).orElse(null);
-
-		boolean alreadyApplied = pendingDrawings == null
-				? current == null
-				: current != null
-						&& pendingDrawings.equals(current.drawings())
-						&& pendingColorIndex == current.colorIndex();
-
-		apply(stack, pendingDrawings, pendingColorIndex);
+		apply(stack, pendingBlob);
 
 		MinecraftServer server = minecraft.getSingleplayerServer();
 
 		if (server != null) {
-			// Singleplayer / LAN host: write through to the authoritative copy,
-			// matched by the same slot rule.
-			UUID playerId = player.getUUID();
-			PageDrawings drawings = pendingDrawings;
-			int colorIndex = pendingColorIndex;
-			InteractionHand hand = pendingHand;
-			int slot = pendingSlot;
+			writeThroughToIntegratedServer(server, player.getUUID());
+			return;
+		}
 
-			server.execute(() -> {
-				ServerPlayer serverPlayer = server.getPlayerList().getPlayer(playerId);
+		if (!firstAttempt) {
+			return;
+		}
 
-				if (serverPlayer == null) {
-					return;
-				}
+		// A server with the mod (or the Paper plugin) accepts this channel;
+		// canSend is false on a plain vanilla server, so nothing is sent to
+		// one that would only reject it.
+		if (ClientPlayNetworking.canSend(DrawingSyncPayload.TYPE)) {
+			byte[] blob = pendingBlob == null ? new byte[0] : pendingBlob;
 
-				ItemStack serverStack = hand == InteractionHand.OFF_HAND
-						? serverPlayer.getItemInHand(hand)
-						: serverPlayer.getInventory().getItem(slot);
+			if (DrawingBlob.isValid(blob)) {
+				ClientPlayNetworking.send(new DrawingSyncPayload(
+						pendingHand == InteractionHand.OFF_HAND ? 1 : 0, blob));
+			}
 
-				if (serverStack != null && isBook(serverStack)) {
-					apply(serverStack, drawings, colorIndex);
-				}
-			});
-
-			return true;
+			return;
 		}
 
 		if (player.getAbilities().instabuild) {
-			// Remote server, creative mode: the creative set-item packet
-			// carries component data verbatim. Send it only when something
-			// actually changed, to avoid spamming a packet every tick.
-			if (!alreadyApplied) {
-				int slot = pendingHand == InteractionHand.OFF_HAND
-						? OFFHAND_PACKET_SLOT
-						: 36 + pendingSlot;
-				player.connection.send(new ServerboundSetCreativeModeSlotPacket(slot, stack.copy()));
-			}
-
-			return true;
+			int slot = pendingHand == InteractionHand.OFF_HAND
+					? OFFHAND_PACKET_SLOT
+					: 36 + pendingSlot;
+			player.connection.send(new ServerboundSetCreativeModeSlotPacket(slot, stack.copy()));
+			return;
 		}
 
-		return false;
+		if (pendingBlob != null && !warnedAboutServer) {
+			warnedAboutServer = true;
+			DrawInBooks.LOGGER.warn(
+					"This server has neither the Draw In Books mod nor its Paper plugin, and you are not in "
+							+ "creative - the drawing cannot be stored server side and will disappear on the next "
+							+ "inventory sync.");
+		}
+	}
+
+	private static void writeThroughToIntegratedServer(MinecraftServer server, UUID playerId) {
+		byte[] blob = pendingBlob;
+		InteractionHand hand = pendingHand;
+		int slot = pendingSlot;
+
+		server.execute(() -> {
+			ServerPlayer serverPlayer = server.getPlayerList().getPlayer(playerId);
+
+			if (serverPlayer == null) {
+				return;
+			}
+
+			ItemStack serverStack = hand == InteractionHand.OFF_HAND
+					? serverPlayer.getItemInHand(hand)
+					: serverPlayer.getInventory().getItem(slot);
+
+			if (BookDrawingStorage.isBook(serverStack)) {
+				apply(serverStack, blob);
+			}
+		});
 	}
 
 	/**
 	 * The book this drawing belongs to, or null if it is no longer there.
 	 * Accepts only the original stack instance, or a written book that took
-	 * its place in the same slot (that is exactly what signing does). Any
-	 * other book - a different copy, a same-named duplicate, whatever the
-	 * player selected a moment later - is explicitly not a match.
+	 * its place in the same slot - which is exactly what signing does. Any
+	 * other book, including an identical-looking copy the player selected a
+	 * moment later, is explicitly not a match.
 	 */
 	private static ItemStack targetStack(LocalPlayer player) {
 		ItemStack stack = pendingHand == InteractionHand.OFF_HAND
 				? player.getOffhandItem()
 				: player.getInventory().getItem(pendingSlot);
 
-		if (stack == null || !isBook(stack)) {
+		if (!BookDrawingStorage.isBook(stack)) {
 			return null;
 		}
 
@@ -219,7 +222,11 @@ public final class DrawingPersistence {
 		return null;
 	}
 
-	private static void apply(ItemStack stack, PageDrawings drawings, int colorIndex) {
-		BookDrawingStorage.write(stack, drawings, colorIndex);
+	private static void apply(ItemStack stack, byte[] blob) {
+		if (blob == null) {
+			BookDrawingStorage.clear(stack);
+		} else {
+			BookDrawingStorage.writeBlob(stack, blob);
+		}
 	}
 }

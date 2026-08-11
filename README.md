@@ -83,13 +83,20 @@ else is affected — but note this does scale the book's own Done/Sign buttons
 too, since it scales the whole screen.
 
 **Data model** — the drawing rides along on the book `ItemStack` (never world
-data, never a separate file), stored under a single `drawinbooks` key inside
+data, never a separate file) as a single flat byte array, stored inside
 **vanilla's `minecraft:custom_data`** — deliberately *not* a data component
 registered by this mod. That is what makes the mod optional: a vanilla server
 stores and forwards `custom_data` without knowing what's in it, a player
 without the mod just doesn't see the drawing, and nobody can be disconnected
-by an unknown component id because there isn't one. Two players who both have
-the mod see the same drawing on the same book.
+by an unknown component id because there isn't one.
+
+The exact path is `custom_data → PublicBukkitValues → "drawinbooks:pages"`,
+which is where Bukkit's persistent data container writes. That isn't
+incidental: a Paper plugin can only touch item data through the PDC, so
+writing there from the Fabric side too means the mod and the plugin read and
+write the same bytes in the same place, instead of two formats to keep in
+sync. A flat byte array for the same reason — the PDC has no structured
+types, so structure would have meant two encodings.
 
 - 114×128 px, **2 bits per pixel** — blank plus three ink colors, so one page
   can mix colors → exactly **3 648 bytes per page**, always. The resolution
@@ -230,14 +237,32 @@ Being a pure client mod:
 
 | Environment | Result |
 |---|---|
-| Singleplayer / LAN host | Component written through to the integrated server's copy; saves with the world. Uninstall → book renders blank but data stays; reinstall → drawing reappears. |
-| Multiplayer, creative | Sent via the creative set-slot packet, which vanilla servers accept with full component data. |
-| Multiplayer, survival | The vanilla book-edit packet carries only text; the drawing stays client-side (noted in the log). |
+| Server running the mod or the Paper plugin | Works in survival, no permissions needed. The client sends the drawing on the `drawinbooks:draw` channel; the server validates it and stores it on the book. |
+| Singleplayer / LAN host | Written straight through to the integrated server's copy; saves with the world. Uninstall → ordinary book, data untouched; reinstall → drawing reappears. |
+| Vanilla server, creative | Sent via the creative set-slot packet, which vanilla accepts from creative players with full item data. |
+| **Vanilla server, survival** | **Cannot work.** No vanilla packet lets a survival player attach data to an item — the book packet carries text only. The drawing exists on your client until the next inventory sync overwrites it, and the mod says so once in the log. This is not a permissions problem: op changes nothing, because vanilla has no such channel at all. |
 
-Trading, chests, shulkers and stacking follow from component storage: two
-modded clients both see a drawing that's actually on the item; identical
-written books (byte-for-byte equal components — `PageDrawings` implements
-content equality for exactly this reason) still stack.
+Trading, chests and shulkers follow from the data being on the item: two
+players who both have the mod see the same drawing on the same book.
+
+### Server side
+
+`DrawingSyncReceiver` (Fabric) and `paper/` (Paper plugin) are two
+implementations of the same three lines of logic: receive a blob, validate it,
+write it to the book in the sender's hand. Neither renders anything or sends
+anything back — the client already knows what it drew.
+
+Nothing from a client is trusted. The payload codec caps the length before a
+byte is buffered, `DrawingBlob.isValid` rejects anything that isn't the exact
+fixed format, the target must be a book the sender is actually holding, and
+each player is rate limited to one accepted sync per 500 ms. The plugin
+duplicates the validation constants rather than sharing them, because it must
+compile against the Bukkit API alone — the cost is two places to change, which
+is why the format is deliberately trivial.
+
+The client only sends when the server has announced the channel
+(`ClientPlayNetworking.canSend`), so a plain vanilla server is never sent
+anything it would only reject.
 
 ## Source layout
 
@@ -245,8 +270,10 @@ content equality for exactly this reason) still stack.
 src/main/java/com/drawinbooks/
   DrawInBooks.java                    mod init (registers the component)
   component/PageBitmaps.java          pure-Java format constants + validation + pixel ops
-  component/PageDrawings.java         immutable value, strict-decode codec
-  component/BookDrawingStorage.java   read/write inside vanilla custom_data
+  component/DrawingBlob.java          the one wire/storage format, and its validation
+  component/BookDrawingStorage.java   read/write inside vanilla custom_data (Bukkit PDC path)
+  net/DrawingSyncPayload.java         client → server packet
+  net/DrawingSyncReceiver.java        server side: validate and store
 src/client/java/com/drawinbooks/client/
   DrawInBooksClient.java              client entrypoint (empty)
   mixin/BookEditScreenMixin.java      toolbar + canvas + input blocking + save hook
@@ -257,7 +284,9 @@ src/client/java/com/drawinbooks/client/
   draw/BookScreenScale.java           +1 GUI scale while a book screen is open
   draw/DrawingPersistence.java        component write-back (SP write-through, creative packet, sign retry)
   draw/Tool.java                      PEN (1x1) / ERASER (3x3)
-src/test/java/.../PageBitmapsTest.java  JUnit tests for the format contract
+src/test/java/.../PageBitmapsTest.java   JUnit tests for the bitmap contract
+src/test/java/.../DrawingBlobTest.java   JUnit tests for the blob contract
+paper/                                   standalone Gradle project: the Paper plugin
 ```
 
 ## Things to verify in-game (not yet verified — no MC runtime here)

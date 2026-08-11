@@ -1,0 +1,10 @@
+# The plugin name must stay lowercase "drawinbooks": Bukkit builds its
+# persistent-data keys as "<plugin name>:<key>", and the mod reads exactly
+# "drawinbooks:pages". Renaming this breaks compatibility with the client.
+name: drawinbooks
+version: '${version}'
+main: com.drawinbooks.paper.DrawInBooksPlugin
+api-version: '1.21'
+description: Server side of Draw In Books - stores drawings players make in book and quill.
+authors: [zobra]
+website: https://modrinth.com/mod/draw-in-books

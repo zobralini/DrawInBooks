@@ -87,6 +87,15 @@ public final class PageBitmaps {
 		return new byte[BYTES_PER_PAGE];
 	}
 
+	/**
+	 * Decode-time clamp for the stored "last used pen color" hint. Pixel
+	 * colors themselves need no clamping - they are two bits wide and cannot
+	 * encode an invalid value.
+	 */
+	public static int clampColorIndex(int index) {
+		return index >= 0 && index < COLOR_COUNT ? index : 0;
+	}
+
 	public static boolean isBlank(byte[] page) {
 		for (byte b : page) {
 			if (b != 0) {

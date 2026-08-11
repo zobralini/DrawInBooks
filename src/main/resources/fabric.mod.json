@@ -14,7 +14,7 @@
 	},
 	"license": "MIT",
 	"icon": "assets/drawinbooks/icon.png",
-	"environment": "client",
+	"environment": "*",
 	"entrypoints": {
 		"main": [
 			"com.drawinbooks.DrawInBooks"

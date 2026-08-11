@@ -18,22 +18,36 @@ needed here.
 The included workflow (`.github/workflows/build.yml`) builds and runs the tests
 on every push, and uploads the jar as a build artifact.
 
-## 2. Build the release jar
+## 2. Build the release jars
+
+The mod:
 
 ```
 gradlew build
 ```
 
-The file to upload is `build/libs/drawinbooks-0.1.1.jar` — **not** the
-`-sources` one.
+Upload `build/libs/drawinbooks-0.2.0.jar` — **not** the `-sources` one. The
+same jar works on both a client and a Fabric server.
+
+The Paper plugin is a separate Gradle project, because it builds against the
+Bukkit API instead of Minecraft:
+
+```
+cd paper
+gradlew build
+```
+
+That produces `paper/build/libs/drawinbooks-paper-0.2.0.jar`. Upload it as a
+second file on the same Modrinth version, or as its own project — Modrinth
+allows additional files per version, which is the simpler option.
 
 ## 3. Create the Modrinth project
 
 Every field value and the full page body are in **[MODRINTH.md](MODRINTH.md)**,
 written to be pasted straight in. Short version: name *Draw In Books*, slug
-`draw-in-books`, MIT, client required / server unsupported, Fabric 26.2,
-upload `drawinbooks-0.1.1.jar` as a **beta** with Fabric API as a required
-dependency.
+`draw-in-books`, MIT, client required / server optional, Fabric 26.2, upload
+`drawinbooks-0.2.0.jar` as a **beta** with Fabric API as a required
+dependency, and attach the Paper plugin jar as a second file.
 
 ### Prior art
 

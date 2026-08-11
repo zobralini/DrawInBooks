@@ -8,7 +8,7 @@
 | Slug / URL | `draw-in-books` |
 | Project type | Mod |
 | Client side | **Required** |
-| Server side | **Unsupported** |
+| Server side | **Optional** |
 | License | MIT |
 | Categories | Utility, Decoration |
 | Icon | `src/main/resources/assets/drawinbooks/icon.png` |
@@ -24,9 +24,9 @@
 
 | Field | Value |
 |---|---|
-| File | `build/libs/drawinbooks-0.1.1.jar` (not `-sources`) |
-| Version number | `0.1.1` |
-| Version name | `0.1.1 — first release` |
+| File | `build/libs/drawinbooks-0.2.0.jar` (not `-sources`) |
+| Version number | `0.2.0` |
+| Version name | `0.2.0 — first release` |
 | Release channel | **Beta** |
 | Loaders | Fabric |
 | Game versions | 26.2 |
@@ -89,10 +89,18 @@ plainly:
   the data travels with the item.
 - A vanilla server stores and forwards it without knowing what it is.
 
-**Multiplayer limitation, honestly:** on a vanilla server in survival, the
-vanilla book packet only carries text, so a drawing you make there stays on
-your client. It persists in singleplayer, in creative, and on servers running
-the mod.
+## Servers
+
+Drawings save on a server **if the server has the mod too** — the same jar
+works server side, and there's a **Paper plugin** attached to this version for
+servers that don't run Fabric. Install either one and drawing works in
+survival for everyone, with no permissions to hand out.
+
+Without one of them, on a plain vanilla server in survival, a drawing stays on
+your client and disappears on the next inventory sync. That's not something a
+mod can fix from the client: vanilla has no packet that lets a survival player
+attach data to an item, so being op makes no difference either. Singleplayer
+and creative work regardless.
 
 ## About size
 

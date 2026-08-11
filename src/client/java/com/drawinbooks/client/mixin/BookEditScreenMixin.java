@@ -11,6 +11,7 @@ import com.drawinbooks.client.draw.IconButton;
 import com.drawinbooks.client.draw.InkColor;
 import com.drawinbooks.client.draw.Tool;
 import com.drawinbooks.component.BookDrawingStorage;
+import com.drawinbooks.component.DrawingBlob;
 import com.drawinbooks.component.PageBitmaps;
 
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
@@ -145,12 +146,11 @@ public abstract class BookEditScreenMixin extends Screen {
 					? ItemStack.EMPTY
 					: this.minecraft.player.getItemInHand(this.drawinbooks$hand);
 
-			BookDrawingStorage.Stored stored = BookDrawingStorage.read(book).orElse(null);
+			DrawingBlob.Decoded stored = BookDrawingStorage.read(book).orElse(null);
 
 			this.drawinbooks$session = stored == null
-					? DrawingSession.fromComponent(null, InkColor.RED)
-					: DrawingSession.fromComponent(
-							stored.drawings(), InkColor.byIndex(stored.colorIndex()));
+					? DrawingSession.fromPages(null, InkColor.RED)
+					: DrawingSession.fromPages(stored.pages(), InkColor.byIndex(stored.colorIndex()));
 		}
 
 		DrawingSession session = this.drawinbooks$session;
@@ -298,7 +298,7 @@ public abstract class BookEditScreenMixin extends Screen {
 		}
 
 		DrawingPersistence.persist(
-				this.minecraft, this.drawinbooks$hand, session.toComponent(), session.inkColor());
+				this.minecraft, this.drawinbooks$hand, session.toPages(), session.inkColor());
 	}
 
 	@Unique

@@ -6,13 +6,12 @@ import java.util.Deque;
 import java.util.List;
 
 import com.drawinbooks.component.PageBitmaps;
-import com.drawinbooks.component.PageDrawings;
 
 /**
  * In-memory editing state for one open book edit screen: a mutable working
  * copy of every page bitmap, the active tool and the text/draw mode toggle.
  * Nothing here touches the ItemStack; committing back to the data component
- * happens explicitly via {@link #toComponent()} when the vanilla screen saves.
+ * happens explicitly via {@link #toPages()} when the vanilla screen saves.
  */
 public final class DrawingSession {
 	/** Lazily-created working bitmaps, indexed by page. */
@@ -45,13 +44,13 @@ public final class DrawingSession {
 		}
 	}
 
-	public static DrawingSession fromComponent(PageDrawings drawings, InkColor inkColor) {
+	public static DrawingSession fromPages(List<byte[]> pages, InkColor inkColor) {
 		DrawingSession session = new DrawingSession();
 		session.inkColor = inkColor == null ? InkColor.RED : inkColor;
 
-		if (drawings != null) {
-			for (int i = 0; i < drawings.pageCount(); i++) {
-				session.workingPages[i] = drawings.copyPage(i);
+		if (pages != null) {
+			for (int i = 0; i < pages.size() && i < PageBitmaps.MAX_PAGES; i++) {
+				session.workingPages[i] = pages.get(i).clone();
 			}
 		}
 
@@ -294,11 +293,11 @@ public final class DrawingSession {
 	}
 
 	/**
-	 * Snapshot of the working state as a component value, or {@code null}
-	 * when every page is blank (meaning the component should be removed from
-	 * the stack rather than stored empty).
+	 * Snapshot of the working state, or {@code null} when every page is blank
+	 * - meaning the drawing should be removed from the book rather than stored
+	 * as an empty one.
 	 */
-	public PageDrawings toComponent() {
+	public List<byte[]> toPages() {
 		int drawn = drawnPageCount();
 
 		if (drawn == 0) {
@@ -308,9 +307,10 @@ public final class DrawingSession {
 		List<byte[]> pages = new ArrayList<>(drawn);
 
 		for (int i = 0; i < drawn; i++) {
-			pages.add(this.workingPages[i] != null ? this.workingPages[i] : PageBitmaps.blankPage());
+			byte[] page = this.workingPages[i];
+			pages.add(page != null ? page.clone() : PageBitmaps.blankPage());
 		}
 
-		return PageDrawings.tryCreate(pages);
+		return pages;
 	}
 }
