@@ -208,12 +208,17 @@ inside the canvas, and the widget never consumes mouse events, so text mode
 behaves exactly like vanilla. Left button uses the selected tool; right
 button always erases.
 
-**Persistence** — committed when vanilla saves (`Done`/`Sign` →
-`saveChanges`). Signing is the awkward case: vanilla builds a *new*
-`written_book` after the screen closes, and it drops empty trailing pages. So
-at save time any page that has a drawing but no text gets a single space
-written into its text page, and the component is re-applied for ~1 s of client
-ticks afterwards so the signed copy inherits the drawing.
+**Persistence** — committed both when vanilla saves (`saveChanges`) and when
+the screen closes. Both are needed: pressing `Sign` calls `saveChanges`
+immediately, *before* you have typed a title and before the book is converted,
+so a save that only happened there would be finished and forgotten by the time
+the signed book actually appears. Saving again on close covers the whole
+signing flow, and matches vanilla, which also saves book text on close.
+
+Signing is the awkward case in general: vanilla builds a *new* `written_book`
+and drops empty trailing pages. So at save time any page that has a drawing
+but no text gets a single space written into its text page, and the drawing is
+re-applied for ~2 s of client ticks afterwards so the signed copy inherits it.
 
 That retry is deliberately narrow, because **a drawing must never land on the
 wrong book** — two identical-looking books are still separate items. It is

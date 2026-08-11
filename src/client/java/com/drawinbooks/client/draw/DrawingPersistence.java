@@ -44,8 +44,14 @@ import net.minecraft.world.item.Items;
  * the player happens to select in the meantime.
  */
 public final class DrawingPersistence {
-	/** ~1s at 20 tps - long enough for the sign round-trip, short enough to be safe. */
-	private static final int REAPPLY_TICKS = 20;
+	/**
+	 * How long to keep re-applying after a save, in client ticks (~2s at 20
+	 * tps). It has to outlast the sign round-trip - the server replaces the
+	 * writable book with a freshly built written one, and the new stack only
+	 * reaches the client a few ticks later - while staying short enough that
+	 * it cannot follow the player into some unrelated book.
+	 */
+	private static final int REAPPLY_TICKS = 40;
 
 	/** Inventory slot index of the offhand, as used by creative set-slot packets. */
 	private static final int OFFHAND_PACKET_SLOT = 45;

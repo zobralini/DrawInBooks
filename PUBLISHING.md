@@ -24,7 +24,7 @@ on every push, and uploads the jar as a build artifact.
 gradlew build
 ```
 
-The file to upload is `build/libs/drawinbooks-0.1.0.jar` — **not** the
+The file to upload is `build/libs/drawinbooks-0.1.1.jar` — **not** the
 `-sources` one.
 
 ## 3. Create the Modrinth project
@@ -32,7 +32,7 @@ The file to upload is `build/libs/drawinbooks-0.1.0.jar` — **not** the
 Every field value and the full page body are in **[MODRINTH.md](MODRINTH.md)**,
 written to be pasted straight in. Short version: name *Draw In Books*, slug
 `draw-in-books`, MIT, client required / server unsupported, Fabric 26.2,
-upload `drawinbooks-0.1.0.jar` as a **beta** with Fabric API as a required
+upload `drawinbooks-0.1.1.jar` as a **beta** with Fabric API as a required
 dependency.
 
 ### Prior art

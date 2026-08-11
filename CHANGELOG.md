@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 0.1.1
+
+- Fixed: pressing **Sign** straight after drawing lost the drawing, and it only
+  survived if you pressed Done first. Vanilla calls its save the moment you
+  press Sign — before the title is typed and before the book is converted — so
+  the drawing is now committed on screen close as well, which covers the whole
+  signing flow.
+
+## 0.1.0
 
 First release. Draw on book & quill pages, independently of the text layer.
 

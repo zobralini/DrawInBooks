@@ -124,7 +124,17 @@ public abstract class BookEditScreenMixin extends Screen {
 	private void drawinbooks$addDrawingUi(CallbackInfo ci) {
 		// Books get one extra GUI-scale step; put it back when the screen goes
 		// away. Registered before enlarging, because enlarging re-runs init.
-		ScreenEvents.remove((Screen) (Object) this).register(screen -> BookScreenScale.restore());
+		//
+		// Closing is also the last safe moment to commit the drawing. Vanilla
+		// calls saveChanges when you press Sign - before you have typed the
+		// title and before the book is actually converted - so a save that
+		// only happened there would be long finished by the time the signed
+		// book appears. Saving again here covers the whole signing flow, and
+		// matches vanilla, which also saves book text on close.
+		ScreenEvents.remove((Screen) (Object) this).register(screen -> {
+			BookScreenScale.restore();
+			drawinbooks$commit();
+		});
 		BookScreenScale.enlarge(this);
 
 		// init() re-runs on window resize; keep the session (and any unsaved
@@ -270,7 +280,22 @@ public abstract class BookEditScreenMixin extends Screen {
 			return;
 		}
 
+		// Reserving the text pages has to happen here specifically: vanilla is
+		// about to read `pages` to build the packet, and pages that are empty
+		// would be dropped, taking their drawings with them.
 		drawinbooks$reservePagesForDrawings(session);
+
+		drawinbooks$commit();
+	}
+
+	/** Writes the current drawing to the book, if there is anything to write. */
+	@Unique
+	private void drawinbooks$commit() {
+		DrawingSession session = this.drawinbooks$session;
+
+		if (session == null || !session.isDirty()) {
+			return;
+		}
 
 		DrawingPersistence.persist(
 				this.minecraft, this.drawinbooks$hand, session.toComponent(), session.inkColor());
