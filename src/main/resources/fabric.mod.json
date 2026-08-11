@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "drawinbooks",
+	"version": "${version}",
+	"name": "Draw in Books",
+	"description": "Draw on book & quill pages. Fully independent of the vanilla text layer; drawings ride along on the book item inside vanilla's custom_data, so the mod is optional - players without it simply see no drawing.",
+	"authors": [
+		"zobra"
+	],
+	"contact": {
+		"homepage": "https://modrinth.com/mod/draw-in-books",
+		"sources": "https://github.com/zobra/DrawInBooks",
+		"issues": "https://github.com/zobra/DrawInBooks/issues"
+	},
+	"license": "MIT",
+	"icon": "assets/drawinbooks/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"main": [
+			"com.drawinbooks.DrawInBooks"
+		],
+		"client": [
+			"com.drawinbooks.client.DrawInBooksClient"
+		]
+	},
+	"mixins": [
+		{
+			"config": "drawinbooks.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~26.2",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
