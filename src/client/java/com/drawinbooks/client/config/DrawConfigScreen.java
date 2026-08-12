@@ -10,8 +10,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 /**
- * The settings screen, reachable from the gear on the book toolbar or with
- * Ctrl-G while a book is open.
+ * The settings screen, reachable from the settings icon on the book toolbar
+ * or with Ctrl-G while a book is open.
  *
  * <p>Built out of plain buttons that cycle their own value rather than
  * vanilla's option widgets: fewer moving parts, and it renders identically on
