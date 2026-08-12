@@ -75,7 +75,7 @@ instead of doubling the page data.
 
 ### Settings
 
-The gear on the toolbar - or **Ctrl-G** in any book screen, which still works
+The settings icon on the toolbar - or **Ctrl-G** in any book screen, which still works
 with the toolbar hidden - opens an in-game settings screen: GUI scale bump,
 whether the tools show at all, default pen and eraser sizes, default ink, which
 side the toolbar sits on, and whether drawings stay visible while writing.

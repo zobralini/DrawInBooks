@@ -48,7 +48,7 @@ public final class DrawToolbar {
 	private static final String GLYPH_PEN = "\u270E"; // pencil: the pen tool
 	private static final String GLYPH_ERASER = "\u274C"; // cross mark: eraser
 	private static final String GLYPH_COLOR = "\u2588"; // full block, tinted with the ink color
-	private static final String GLYPH_SETTINGS = "\u2699"; // gear
+	private static final String GLYPH_SETTINGS = "\u25CE"; // bullseye: settings
 
 	/** Shown instead of the size while Ctrl / Alt / Shift is held. */
 	private static final String GLYPH_BIGGER = "\u207A";

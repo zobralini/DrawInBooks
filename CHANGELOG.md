@@ -4,7 +4,7 @@
 
 Settings, and a lighter footprint.
 
-- **In-game settings**, from the gear on the toolbar or **Ctrl-G** in any book
+- **In-game settings**, from the settings icon on the toolbar or **Ctrl-G** in any book
   screen: scale up the book GUI, show or hide the editing tools, default pen
   and eraser sizes, default ink, which side the toolbar sits on, and whether
   drawings stay visible while writing text. Saved to
