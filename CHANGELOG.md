@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.3.0
+
+Settings, and a lighter footprint.
+
+- **In-game settings**, from the gear on the toolbar or **Ctrl-G** in any book
+  screen: scale up the book GUI, show or hide the editing tools, default pen
+  and eraser sizes, default ink, which side the toolbar sits on, and whether
+  drawings stay visible while writing text. Saved to
+  `config/drawinbooks.properties`, which is plain text and safe to edit by
+  hand.
+- The book GUI scale bump now applies to **Scribble's** screens as well.
+- Toolbar side is configurable because Scribble puts its own controls to the
+  left of the book, where the two would otherwise collide.
+
+Performance, all of it in code that ran every frame or every tick:
+
+- Drawing geometry is computed once and replayed until the drawing actually
+  changes, instead of decoding 14 592 pixels per page per frame. A page nobody
+  is drawing on now costs one integer comparison.
+- Blank pages are detected by scanning bytes rather than decoding pixels, and
+  each pixel in a run is decoded once instead of twice.
+- After saving, the item is only rewritten when it doesn't already carry the
+  drawing. The two-second retry window used to deep-copy the item's NBT and the
+  blob every tick - up to ~28 MB of copying per save on a full book.
+- Toolbar labels are rebuilt only when something they depend on changes,
+  instead of allocating a handful of Components every frame.
+
 ## 0.2.1
 
 - Fixed: with [Scribble](https://modrinth.com/mod/scribble) installed, none of

@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
 
+import com.drawinbooks.client.config.DrawConfig;
 import com.drawinbooks.component.PageBitmaps;
 
 /**
@@ -34,19 +35,34 @@ public final class DrawingSession {
 	}
 
 	private Tool tool = Tool.PEN;
-	private InkColor inkColor = InkColor.RED;
+	private InkColor inkColor;
 	private boolean drawMode = false;
 	private boolean dirty = false;
 
+	/**
+	 * Bumped on every change to any page. Renderers cache their geometry
+	 * against this, so an untouched drawing costs one comparison per frame
+	 * instead of a full rescan.
+	 */
+	private int revision;
+
 	private DrawingSession() {
-		for (Tool value : Tool.values()) {
-			this.brushSizes[value.ordinal()] = value.defaultSize();
-		}
+		DrawConfig config = DrawConfig.get();
+
+		this.brushSizes[Tool.PEN.ordinal()] = Math.clamp(config.penSize, Tool.PEN.minSize(), Tool.PEN.maxSize());
+		this.brushSizes[Tool.ERASER.ordinal()] =
+				Math.clamp(config.eraserSize, Tool.ERASER.minSize(), Tool.ERASER.maxSize());
+		this.inkColor = config.defaultColor();
 	}
 
 	public static DrawingSession fromPages(List<byte[]> pages, InkColor inkColor) {
 		DrawingSession session = new DrawingSession();
-		session.inkColor = inkColor == null ? InkColor.RED : inkColor;
+
+		// A book that already carries a color resumes on it; otherwise the
+		// configured default applies.
+		if (inkColor != null) {
+			session.inkColor = inkColor;
+		}
 
 		if (pages != null) {
 			for (int i = 0; i < pages.size() && i < PageBitmaps.MAX_PAGES; i++) {
@@ -108,6 +124,16 @@ public final class DrawingSession {
 
 	public boolean isDirty() {
 		return this.dirty;
+	}
+
+	public int revision() {
+		return this.revision;
+	}
+
+	/** Marks the pages as changed, invalidating every cached rendering. */
+	private void touch() {
+		this.dirty = true;
+		this.revision++;
 	}
 
 	/** Read-only peek for rendering; null means the page is blank. */
@@ -172,7 +198,7 @@ public final class DrawingSession {
 		}
 
 		this.workingPages[snapshot.pageIndex()] = snapshot.before();
-		this.dirty = true;
+		touch();
 
 		return snapshot.pageIndex();
 	}
@@ -234,7 +260,7 @@ public final class DrawingSession {
 
 		if (this.workingPages[pageIndex] != null && !PageBitmaps.isBlank(this.workingPages[pageIndex])) {
 			this.workingPages[pageIndex] = PageBitmaps.blankPage();
-			this.dirty = true;
+			touch();
 		}
 	}
 
@@ -247,7 +273,7 @@ public final class DrawingSession {
 		}
 
 		PageBitmaps.fill(page, this.inkColor.pixelValue());
-		this.dirty = true;
+		touch();
 	}
 
 	/**
@@ -262,7 +288,7 @@ public final class DrawingSession {
 		for (int dy = -before; dy <= after; dy++) {
 			for (int dx = -before; dx <= after; dx++) {
 				if (PageBitmaps.setColor(page, px + dx, py + dy, value)) {
-					this.dirty = true;
+					touch();
 				}
 			}
 		}

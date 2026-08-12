@@ -73,6 +73,19 @@ The ink color is stored as one clamped index alongside the pages rather than
 in the bitmap: the pixels stay 1 bit each, so a color costs one byte per item
 instead of doubling the page data.
 
+### Settings
+
+The gear on the toolbar - or **Ctrl-G** in any book screen, which still works
+with the toolbar hidden - opens an in-game settings screen: GUI scale bump,
+whether the tools show at all, default pen and eraser sizes, default ink, which
+side the toolbar sits on, and whether drawings stay visible while writing.
+
+They live in `config/drawinbooks.properties`, deliberately plain text rather
+than a config library: six values don't justify a dependency, and a player who
+manages to lock themselves out of the screen can fix it in a text editor. Every
+value is clamped on read, so a hand-edited file can only ever produce a working
+brush.
+
 Both book screens open **one GUI-scale step larger** than the rest of the
 game, since a book at scale 3 is cramped to draw in while scale 4 makes every
 other menu oversized. Only the window's live scale is touched — never the

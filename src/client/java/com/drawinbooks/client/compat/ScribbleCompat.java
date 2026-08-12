@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.drawinbooks.DrawInBooks;
 import com.drawinbooks.client.draw.BookLayout;
+import com.drawinbooks.client.draw.BookScreenScale;
 import com.drawinbooks.client.draw.DrawCanvasWidget;
 import com.drawinbooks.client.draw.DrawToolbar;
 import com.drawinbooks.client.draw.DrawingPersistence;
@@ -71,6 +72,11 @@ public final class ScribbleCompat {
 	private ScribbleCompat() {
 	}
 
+	/** True for Scribble's own book screens, so the GUI scale bump sticks. */
+	public static boolean isBookScreen(Object screen) {
+		return baseClass != null && baseClass.isInstance(screen);
+	}
+
 	public static void initialize() {
 		if (!resolve()) {
 			return;
@@ -111,6 +117,13 @@ public final class ScribbleCompat {
 
 	private static void attach(Screen screen, boolean editable) {
 		Minecraft minecraft = Minecraft.getInstance();
+
+		// Scribble screens get the same scale bump as the vanilla ones. It has
+		// to happen before anything is positioned: enlarging re-runs init, and
+		// this method runs again with the new layout.
+		ScreenEvents.remove(screen).register(closed -> BookScreenScale.restore());
+		BookScreenScale.enlarge(screen);
+
 		InteractionHand hand = findBookHand(minecraft, editable);
 		ItemStack book = minecraft.player == null ? ItemStack.EMPTY : minecraft.player.getItemInHand(hand);
 
@@ -126,7 +139,7 @@ public final class ScribbleCompat {
 		}
 
 		DrawingSession session = stored == null
-				? DrawingSession.fromPages(null, InkColor.RED)
+				? DrawingSession.fromPages(null, null)
 				: DrawingSession.fromPages(stored.pages(), InkColor.byIndex(stored.colorIndex()));
 
 		int originX = invoke(backgroundX, screen);
@@ -154,11 +167,13 @@ public final class ScribbleCompat {
 		int pagesGuarded = pagesShown;
 		int pageTop = originY + PAGE_OFFSET_Y;
 
+		int bookWidth = pagesShown * PAGE_STRIDE_X + 66;
+
 		DrawToolbar toolbar = new DrawToolbar(session, () -> readInt(currentPageField, screen, 0));
 		toolbar.addTo(
 				screen,
 				widgets,
-				originX - DrawToolbar.WIDTH - 2,
+				DrawToolbar.toolbarX(originX, bookWidth),
 				pageTop,
 				(mouseX, mouseY) -> {
 					if (mouseY < pageTop || mouseY >= pageTop + BookLayout.PAGE_TEXT_HEIGHT) {

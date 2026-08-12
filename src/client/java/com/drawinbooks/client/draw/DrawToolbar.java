@@ -3,6 +3,9 @@ package com.drawinbooks.client.draw;
 import java.util.List;
 import java.util.function.IntSupplier;
 
+import com.drawinbooks.client.config.DrawConfig;
+import com.drawinbooks.client.config.DrawConfigScreen;
+
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
@@ -45,6 +48,7 @@ public final class DrawToolbar {
 	private static final String GLYPH_PEN = "\u270E"; // pencil: the pen tool
 	private static final String GLYPH_ERASER = "\u274C"; // cross mark: eraser
 	private static final String GLYPH_COLOR = "\u2588"; // full block, tinted with the ink color
+	private static final String GLYPH_SETTINGS = "\u2699"; // gear
 
 	/** Shown instead of the size while Ctrl / Alt / Shift is held. */
 	private static final String GLYPH_BIGGER = "\u207A";
@@ -70,18 +74,43 @@ public final class DrawToolbar {
 	private IconButton penButton;
 	private IconButton eraserButton;
 	private IconButton colorButton;
+	private IconButton settingsButton;
+
+	/**
+	 * Everything the labels are derived from, packed into one int. The labels
+	 * are only rebuilt when this changes, instead of allocating a handful of
+	 * Components every frame for text that almost never differs.
+	 */
+	private int labelState = -1;
 
 	public DrawToolbar(DrawingSession session, IntSupplier currentPage) {
 		this.session = session;
 		this.currentPage = currentPage;
 	}
 
-	/** Convenience for screens whose page area is a single rectangle. */
-	public void addTo(Screen screen, List<AbstractWidget> widgets, int x, int y) {
-		addTo(screen, widgets, x, y, (mouseX, mouseY) -> false);
+	/**
+	 * The toolbar's left edge, given where the book is. Which side it sits on
+	 * is configurable, because Scribble puts its own controls to the left of
+	 * the book and the two would otherwise overlap.
+	 *
+	 * @param bookLeft  screen x of the book's left edge
+	 * @param bookWidth width of the book graphic
+	 */
+	public static int toolbarX(int bookLeft, int bookWidth) {
+		return DrawConfig.get().toolbarOnRight
+				? bookLeft + bookWidth + 2
+				: bookLeft - WIDTH - 2;
 	}
 
 	public void addTo(Screen screen, List<AbstractWidget> widgets, int x, int y, PageArea pageArea) {
+		// Settings stay reachable even with the toolbar hidden - otherwise
+		// turning the tools off would be a one-way door.
+		registerSettingsHotkey(screen);
+
+		if (!DrawConfig.get().showEditingTools) {
+			return;
+		}
+
 		this.modeButton = Button.builder(
 				Component.literal(GLYPH_DRAW),
 				button -> {
@@ -100,20 +129,40 @@ public final class DrawToolbar {
 					this.session.cycleInkColor();
 					update();
 				});
+		this.settingsButton = new IconButton(x, iconY + 3 * ICON, TOGGLE, ICON,
+				Component.literal(GLYPH_SETTINGS), () -> openSettings(screen));
 
 		widgets.add(this.modeButton);
 		widgets.add(this.penButton);
 		widgets.add(this.eraserButton);
 		widgets.add(this.colorButton);
+		widgets.add(this.settingsButton);
 
 		update();
 
-		// Labels change with the held modifier, so they are refreshed every
-		// frame rather than only on click.
+		// Labels change with the held modifier, so they are checked every
+		// frame - but only rebuilt when something actually differs.
 		ScreenEvents.beforeExtract(screen).register(
 				(s, graphics, mouseX, mouseY, tickProgress) -> update(mouseX, mouseY));
 
 		blockTextInput(screen, pageArea);
+	}
+
+	private static void openSettings(Screen parent) {
+		Minecraft.getInstance().gui.setScreen(new DrawConfigScreen(parent));
+	}
+
+	/** Ctrl-G opens settings from any book screen, toolbar or not. */
+	private static void registerSettingsHotkey(Screen screen) {
+		ScreenKeyboardEvents.allowKeyPress(screen).register((s, event) -> {
+			if (event.key() == GLFW.GLFW_KEY_G
+					&& isKeyDown(GLFW.GLFW_KEY_LEFT_CONTROL, GLFW.GLFW_KEY_RIGHT_CONTROL)) {
+				openSettings(screen);
+				return false;
+			}
+
+			return true;
+		});
 	}
 
 	/**
@@ -184,10 +233,23 @@ public final class DrawToolbar {
 	}
 
 	private void update() {
+		this.labelState = -1;
 		update(Integer.MIN_VALUE, Integer.MIN_VALUE);
 	}
 
 	private void update(int mouseX, int mouseY) {
+		if (this.modeButton == null) {
+			return;
+		}
+
+		int state = labelState(mouseX, mouseY);
+
+		if (state == this.labelState) {
+			return;
+		}
+
+		this.labelState = state;
+
 		boolean draw = this.session.isDrawMode();
 
 		this.modeButton.setMessage(Component.literal(draw ? GLYPH_TEXT : GLYPH_DRAW));
@@ -195,12 +257,44 @@ public final class DrawToolbar {
 		this.penButton.visible = draw;
 		this.eraserButton.visible = draw;
 		this.colorButton.visible = draw;
+		this.settingsButton.visible = draw;
 
 		this.penButton.setMessage(toolLabel(this.penButton, GLYPH_PEN, Tool.PEN, mouseX, mouseY));
 		this.eraserButton.setMessage(toolLabel(this.eraserButton, GLYPH_ERASER, Tool.ERASER, mouseX, mouseY));
 
 		int rgb = this.session.inkColor().rgb();
 		this.colorButton.setMessage(Component.literal(GLYPH_COLOR).withStyle(style -> style.withColor(rgb)));
+	}
+
+	/** Everything the labels depend on, in one comparable value. */
+	private int labelState(int mouseX, int mouseY) {
+		int hovered = 0;
+
+		if (isOver(this.penButton, mouseX, mouseY)) {
+			hovered = 1;
+		} else if (isOver(this.eraserButton, mouseX, mouseY)) {
+			hovered = 2;
+		}
+
+		int modifier = 0;
+
+		if (hovered != 0) {
+			if (isKeyDown(GLFW.GLFW_KEY_LEFT_CONTROL, GLFW.GLFW_KEY_RIGHT_CONTROL)) {
+				modifier = 1;
+			} else if (isKeyDown(GLFW.GLFW_KEY_LEFT_ALT, GLFW.GLFW_KEY_RIGHT_ALT)) {
+				modifier = 2;
+			} else if (isKeyDown(GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_RIGHT_SHIFT)) {
+				modifier = 3;
+			}
+		}
+
+		return (this.session.isDrawMode() ? 1 : 0)
+				| (this.session.tool().ordinal() << 1)
+				| (this.session.inkColor().ordinal() << 3)
+				| (this.session.brushSize(Tool.PEN) << 5)
+				| (this.session.brushSize(Tool.ERASER) << 9)
+				| (hovered << 13)
+				| (modifier << 15);
 	}
 
 	/**
@@ -230,7 +324,7 @@ public final class DrawToolbar {
 	}
 
 	private static boolean isOver(IconButton button, int mouseX, int mouseY) {
-		return button.visible
+		return button != null && button.visible
 				&& mouseX >= button.getX() && mouseX < button.getX() + button.getWidth()
 				&& mouseY >= button.getY() && mouseY < button.getY() + button.getHeight();
 	}

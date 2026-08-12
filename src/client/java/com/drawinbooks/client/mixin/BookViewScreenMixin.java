@@ -69,15 +69,19 @@ public abstract class BookViewScreenMixin extends Screen {
 
 		List<byte[]> pages = stored.pages();
 
+		// A reader never edits, so the geometry is built once and replayed -
+		// the revision passed in is constant.
+		CanvasRenderer.RunCache cache = new CanvasRenderer.RunCache();
+
 		ScreenEvents.afterExtract(self).register((screen, graphics, mouseX, mouseY, tickProgress) -> {
 			int page = this.currentPage;
 
 			if (page >= 0 && page < pages.size()) {
-				CanvasRenderer.renderInk(
+				cache.render(
 						graphics,
 						BookLayout.bookLeft(this.width) + BookLayout.CANVAS_X,
 						BookLayout.CANVAS_Y,
-						pages.get(page));
+						pages.get(page), page, 0);
 			}
 		});
 	}

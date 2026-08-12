@@ -92,7 +92,7 @@ public abstract class BookEditScreenMixin extends Screen {
 			DrawingBlob.Decoded stored = BookDrawingStorage.read(book).orElse(null);
 
 			this.drawinbooks$session = stored == null
-					? DrawingSession.fromPages(null, InkColor.RED)
+					? DrawingSession.fromPages(null, null)
 					: DrawingSession.fromPages(stored.pages(), InkColor.byIndex(stored.colorIndex()));
 		}
 
@@ -110,7 +110,7 @@ public abstract class BookEditScreenMixin extends Screen {
 		new DrawToolbar(session, () -> this.currentPage).addTo(
 				self,
 				Screens.getWidgets(self),
-				bookLeft - DrawToolbar.WIDTH - 2,
+				DrawToolbar.toolbarX(bookLeft, BookLayout.BOOK_WIDTH),
 				BookLayout.PAGE_TEXT_Y,
 				(mouseX, mouseY) -> mouseX >= pageLeft && mouseX < pageLeft + BookLayout.PAGE_TEXT_WIDTH
 						&& mouseY >= BookLayout.PAGE_TEXT_Y

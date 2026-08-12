@@ -1,5 +1,6 @@
 package com.drawinbooks.client.draw;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -222,10 +223,24 @@ public final class DrawingPersistence {
 		return null;
 	}
 
+	/**
+	 * Writes only when the item doesn't already carry exactly this drawing.
+	 * The re-apply window runs for two seconds, and a write means deep-copying
+	 * the item's whole NBT plus the blob - up to 356 KiB - so repeating it
+	 * every tick for a book that already took the change is pure garbage.
+	 */
 	private static void apply(ItemStack stack, byte[] blob) {
+		byte[] current = BookDrawingStorage.readBlob(stack).orElse(null);
+
 		if (blob == null) {
-			BookDrawingStorage.clear(stack);
-		} else {
+			if (current != null) {
+				BookDrawingStorage.clear(stack);
+			}
+
+			return;
+		}
+
+		if (!Arrays.equals(current, blob)) {
 			BookDrawingStorage.writeBlob(stack, blob);
 		}
 	}

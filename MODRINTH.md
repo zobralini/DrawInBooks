@@ -24,9 +24,9 @@
 
 | Field | Value |
 |---|---|
-| File | `build/libs/drawinbooks-0.2.1.jar` (not `-sources`) |
-| Version number | `0.2.1` |
-| Version name | `0.2.1 — first release` |
+| File | `build/libs/drawinbooks-0.3.0.jar` (not `-sources`) |
+| Version number | `0.3.0` |
+| Version name | `0.3.0 — first release` |
 | Release channel | **Beta** |
 | Loaders | Fabric |
 | Game versions | 26.2 |

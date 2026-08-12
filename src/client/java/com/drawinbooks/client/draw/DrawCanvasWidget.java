@@ -2,6 +2,7 @@ package com.drawinbooks.client.draw;
 
 import java.util.function.IntSupplier;
 
+import com.drawinbooks.client.config.DrawConfig;
 import com.drawinbooks.component.PageBitmaps;
 
 import net.minecraft.client.Minecraft;
@@ -36,6 +37,9 @@ public final class DrawCanvasWidget extends AbstractWidget {
 	private final DrawingSession session;
 	private final IntSupplier currentPage;
 
+	/** Cached run geometry; rebuilt only when the drawing changes. */
+	private final CanvasRenderer.RunCache runCache = new CanvasRenderer.RunCache();
+
 	/** False on reading screens, where the canvas renders but takes no input. */
 	private final boolean editable;
 
@@ -65,9 +69,13 @@ public final class DrawCanvasWidget extends AbstractWidget {
 		if (this.editable) {
 			handleInput(px, py, overCanvas);
 		}
-		CanvasRenderer.renderInk(
-				graphics, getX(), getY(),
-				this.session.peekPage(this.currentPage.getAsInt()));
+
+		int page = this.currentPage.getAsInt();
+
+		if (this.editable || this.session.isDrawMode() || DrawConfig.get().showDrawingsInTextMode) {
+			this.runCache.render(graphics, getX(), getY(),
+					this.session.peekPage(page), page, this.session.revision());
+		}
 
 		// Cursor preview in the pen's color, showing exactly which pixels the
 		// brush would hit.

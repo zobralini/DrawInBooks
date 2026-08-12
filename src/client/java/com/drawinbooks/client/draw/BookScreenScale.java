@@ -2,6 +2,10 @@ package com.drawinbooks.client.draw;
 
 import com.mojang.blaze3d.platform.Window;
 
+import com.drawinbooks.client.compat.ScribbleCompat;
+import com.drawinbooks.client.config.DrawConfig;
+import com.drawinbooks.client.config.DrawConfigScreen;
+
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import net.minecraft.client.Minecraft;
@@ -39,7 +43,7 @@ public final class BookScreenScale {
 		ClientTickEvents.END_CLIENT_TICK.register(minecraft -> {
 			Screen screen = minecraft.gui == null ? null : minecraft.gui.screen();
 
-			if (!(screen instanceof BookEditScreen) && !(screen instanceof BookViewScreen)) {
+			if (!isBookScreen(screen)) {
 				restore();
 			}
 		});
@@ -51,6 +55,10 @@ public final class BookScreenScale {
 	 * reports the target scale, so the second call does nothing.
 	 */
 	public static void enlarge(Screen screen) {
+		if (!DrawConfig.get().scaleUpBookGui) {
+			return;
+		}
+
 		Minecraft minecraft = Minecraft.getInstance();
 		Window window = minecraft.getWindow();
 
@@ -84,6 +92,18 @@ public final class BookScreenScale {
 		if (next != null) {
 			next.resize(window.getGuiScaledWidth(), window.getGuiScaledHeight());
 		}
+	}
+
+	/**
+	 * Book screens keep the bump; anything else gives it back. The settings
+	 * screen counts as one, so opening it from a book doesn't resize the world
+	 * behind it and then resize it again on the way back.
+	 */
+	private static boolean isBookScreen(Screen screen) {
+		return screen instanceof BookEditScreen
+				|| screen instanceof BookViewScreen
+				|| screen instanceof DrawConfigScreen
+				|| ScribbleCompat.isBookScreen(screen);
 	}
 
 	/** @return the enlarged scale, or 0 when the window is already at its max */
