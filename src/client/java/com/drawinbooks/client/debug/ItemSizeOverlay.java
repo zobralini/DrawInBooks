@@ -82,7 +82,9 @@ public final class ItemSizeOverlay {
 		}
 
 		if (lastMessage != null) {
-			minecraft.gui.setOverlayMessage(lastMessage, false);
+			// 26.2 split the old in-game HUD out of Gui, so the action bar
+			// lives on gui.hud now rather than on gui itself.
+			minecraft.gui.hud.setOverlayMessage(lastMessage, false);
 		}
 	}
 
