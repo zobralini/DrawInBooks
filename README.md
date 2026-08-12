@@ -78,7 +78,10 @@ instead of doubling the page data.
 The settings icon on the toolbar - or **Ctrl-G** in any book screen, which still works
 with the toolbar hidden - opens an in-game settings screen: GUI scale bump,
 whether the tools show at all, default pen and eraser sizes, default ink, which
-side the toolbar sits on, and whether drawings stay visible while writing.
+side the toolbar sits on, whether drawings stay visible while writing, and a
+debug readout that puts the held item's real serialized size in the action bar
+(any item, not just books - which is what makes the size comparisons in this
+README checkable in game).
 
 They live in `config/drawinbooks.properties`, deliberately plain text rather
 than a config library: six values don't justify a dependency, and a player who

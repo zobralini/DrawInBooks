@@ -48,6 +48,12 @@ public final class DrawConfig {
 	public boolean toolbarOnRight = false;
 
 	/**
+	 * Show the serialized size of the held item in the action bar. A debug
+	 * aid: every size claim this mod makes can be checked in game.
+	 */
+	public boolean debugItemSize = false;
+
+	/**
 	 * Keep drawings visible while writing text. Off means the page shows only
 	 * what you are currently working on, which some people find less busy.
 	 */
@@ -93,6 +99,7 @@ public final class DrawConfig {
 		config.showEditingTools = bool(properties, "showEditingTools", config.showEditingTools);
 		config.showDrawingsInTextMode = bool(properties, "showDrawingsInTextMode", config.showDrawingsInTextMode);
 		config.toolbarOnRight = bool(properties, "toolbarOnRight", config.toolbarOnRight);
+		config.debugItemSize = bool(properties, "debugItemSize", config.debugItemSize);
 
 		// Clamped on read: a hand-edited file can only ever produce a usable
 		// brush, never a broken one.
@@ -110,6 +117,7 @@ public final class DrawConfig {
 		properties.setProperty("showEditingTools", Boolean.toString(this.showEditingTools));
 		properties.setProperty("showDrawingsInTextMode", Boolean.toString(this.showDrawingsInTextMode));
 		properties.setProperty("toolbarOnRight", Boolean.toString(this.toolbarOnRight));
+		properties.setProperty("debugItemSize", Boolean.toString(this.debugItemSize));
 		properties.setProperty("penSize", Integer.toString(this.penSize));
 		properties.setProperty("eraserSize", Integer.toString(this.eraserSize));
 		properties.setProperty("defaultColorIndex", Integer.toString(this.defaultColorIndex));

@@ -72,7 +72,10 @@ public final class DrawCanvasWidget extends AbstractWidget {
 
 		int page = this.currentPage.getAsInt();
 
-		if (this.editable || this.session.isDrawMode() || DrawConfig.get().showDrawingsInTextMode) {
+		// On a reading screen there is no text mode, so the drawing always
+		// shows. While editing, it shows in draw mode, or in text mode only if
+		// the player asked to keep it visible.
+		if (!this.editable || this.session.isDrawMode() || DrawConfig.get().showDrawingsInTextMode) {
 			this.runCache.render(graphics, getX(), getY(),
 					this.session.peekPage(page), page, this.session.revision());
 		}

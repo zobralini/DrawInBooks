@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1
+
+- Fixed: **Show drawings while writing** did nothing. The check let the editing
+  screen through before it was ever consulted, so drawings always rendered.
+- Brush sizes in settings are **sliders** now instead of click-to-cycle buttons.
+- New debug option: **show item size**. With it on, the action bar shows how
+  many bytes the item in your hand actually serializes to, and for a book how
+  much of that is the drawing. It measures any item, so a drawn book can be
+  compared against a maxed-out text book or a full shulker - every size claim
+  this mod makes is checkable in game. Green under 8 KiB, yellow under 64 KiB,
+  red past that.
+
 ## 0.3.0
 
 Settings, and a lighter footprint.
