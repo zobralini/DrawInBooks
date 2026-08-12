@@ -42,6 +42,12 @@ That produces `paper/build/libs/drawinbooks-paper-0.3.1.jar`. Upload it as a
 second file on the same Modrinth version, or as its own project — Modrinth
 allows additional files per version, which is the simpler option.
 
+**When the plugin actually needs rebuilding:** only when something under
+`src/main/java/com/drawinbooks/component` or `net` changes — that is the shared
+storage format and wire protocol. Everything under `client/` is the client's
+business alone, and an older plugin jar keeps working. The version numbers are
+kept in lockstep purely so it's obvious which pair belongs together.
+
 ## 3. Create the Modrinth project
 
 Every field value and the full page body are in **[MODRINTH.md](MODRINTH.md)**,

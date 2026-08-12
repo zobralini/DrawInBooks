@@ -32,9 +32,9 @@
 | Game versions | 26.2 |
 | Dependencies | Fabric API — **required** |
 
-Beta rather than release: the mod works, but 0.1.0 has had one round of
-in-game testing. Move to Release once a few people have used it without
-surprises.
+Beta rather than release: everything here has been tested by one person, in
+singleplayer and on a server. Move to Release once a few other people have used
+it without surprises.
 
 Version changelog — paste from `CHANGELOG.md`.
 
@@ -49,8 +49,8 @@ already write. Open a book, click ✎, and draw on the page. That's the whole
 feature.
 
 The design goal was to feel like something that could have shipped in vanilla:
-no new items, no new blocks, no new textures, no config screen. One small
-toolbar appears next to the book, and nothing else about the game changes.
+no new items, no new blocks, no new textures. One small toolbar appears next to
+the book, and nothing else about the game changes.
 
 ## Drawing
 
@@ -71,11 +71,34 @@ toolbar appears next to the book, and nothing else about the game changes.
 | Shift + click the eraser | wipe the whole page |
 | Ctrl + Z | undo |
 | █ button | switch pen color |
+| ◎ button, or Ctrl + G | settings |
 
 While drawing, the page is a canvas only — clicks don't move the text cursor
 and typing doesn't edit the text. Switch back with **A** and the book behaves
-exactly like vanilla again. Book screens also open one GUI-scale step larger
-than the rest of the game, because a book at scale 3 is cramped to draw in.
+exactly like vanilla again.
+
+## Settings
+
+In-game, from the `◎` on the toolbar or **Ctrl-G** in any book screen:
+
+- **Scale up book GUI** — books open one GUI-scale step larger than the rest of
+  the game, because a book at scale 3 is cramped to draw in while scale 4 makes
+  every other menu oversized. Only the live scale is touched, never your saved
+  option.
+- **Show editing tools** — hide the toolbar entirely; drawings still show.
+  Ctrl-G still opens settings, so this isn't a one-way door.
+- **Show drawings while writing** — whether drawings stay visible in text mode.
+- **Toolbar side**, **default ink**, **default pen and eraser sizes**.
+- **Debug: show item size** — puts the held item's real serialized size in the
+  action bar, for any item. Handy for comparing a drawn book against a
+  text-filled one, or for checking the numbers below yourself.
+
+## Works with Scribble
+
+[Scribble](https://modrinth.com/mod/scribble) replaces the book screen with its
+own, so mods that hook the vanilla one usually vanish when it's installed. This
+one attaches to Scribble's screens too, including its two-page view, without
+depending on it in any way.
 
 ## The mod is optional
 

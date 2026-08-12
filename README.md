@@ -1,15 +1,20 @@
 # Draw in Books
 
-Fabric **client mod** for Minecraft **26.2** that lets players draw on book &
-quill pages, fully independent of the vanilla text layer. Designed as a
-minimal, low-risk feature pitch: no new items, no new textures, no registry
-entries, no packets — two mixins and a fixed-size bitmap that rides along on
-the book itself.
+Fabric mod for Minecraft **26.2** that lets players draw on book & quill pages,
+fully independent of the vanilla text layer. Designed to feel like something
+that could have shipped in vanilla: no new items, no new blocks, no new
+textures, no registry entries — two mixins, a small toolbar, and a fixed-size
+bitmap that rides along on the book itself.
 
 **The mod is optional.** Drawings live inside vanilla's `minecraft:custom_data`,
-so a player without it sees an ordinary book, and nothing unknown ever goes
-over the wire. Two players who both have it see the same drawing on the same
-book.
+so a player without it sees an ordinary book, and no unknown component id ever
+goes over the wire. Two players who both have it see the same drawing on the
+same book.
+
+Mostly client-side. The one exception is saving on a server: install the same
+jar on a Fabric server, or the **Paper plugin** in [`paper/`](paper), and
+drawing works in survival for everyone. Without one of those, a drawing made on
+a server stays on the drawer's client — see [Persistence](#how-it-works).
 
 ## Building & running
 
@@ -69,9 +74,9 @@ the drawing off the book in the player's hand and draws it from
 *above* the page text exactly as it does while editing. (A widget would be
 drawn before the screen paints its own text.)
 
-The ink color is stored as one clamped index alongside the pages rather than
-in the bitmap: the pixels stay 1 bit each, so a color costs one byte per item
-instead of doubling the page data.
+Alongside the pages sits one clamped byte: the pen color the player last used,
+so reopening a book resumes on it. Pixel colors themselves live in the bitmap,
+two bits each.
 
 ### Settings
 
@@ -84,10 +89,11 @@ debug readout that puts the held item's real serialized size in the action bar
 README checkable in game).
 
 They live in `config/drawinbooks.properties`, deliberately plain text rather
-than a config library: six values don't justify a dependency, and a player who
-manages to lock themselves out of the screen can fix it in a text editor. Every
-value is clamped on read, so a hand-edited file can only ever produce a working
-brush.
+than a config library: a handful of values doesn't justify a dependency, and a
+player who manages to lock themselves out of the screen can fix it in a text
+editor. Every value is clamped on read, so a hand-edited file can only ever
+produce a working brush. Ctrl-G works even with the toolbar hidden, so turning
+the tools off is never a one-way door.
 
 Both book screens open **one GUI-scale step larger** than the rest of the
 game, since a book at scale 3 is cramped to draw in while scale 4 makes every
@@ -311,7 +317,7 @@ src/main/java/com/drawinbooks/
   net/DrawingSyncPayload.java         client → server packet
   net/DrawingSyncReceiver.java        server side: validate and store
 src/client/java/com/drawinbooks/client/
-  DrawInBooksClient.java              client entrypoint (empty)
+  DrawInBooksClient.java              client entrypoint
   mixin/BookEditScreenMixin.java      toolbar + canvas + input blocking + save hook
   mixin/BookViewScreenMixin.java      renders drawings when reading a signed book
   draw/DrawingSession.java            in-memory working bitmaps, tool & mode state, Bresenham strokes
@@ -319,7 +325,14 @@ src/client/java/com/drawinbooks/client/
   draw/BookLayout.java                page-area geometry & bitmap ↔ screen mapping
   draw/BookScreenScale.java           +1 GUI scale while a book screen is open
   draw/DrawingPersistence.java        component write-back (SP write-through, creative packet, sign retry)
-  draw/Tool.java                      PEN (1x1) / ERASER (3x3)
+  draw/Tool.java                      PEN / ERASER and their size limits
+  draw/DrawToolbar.java               the toolbar, shared by both screen kinds
+  draw/IconButton.java                frameless glyph button
+  draw/CanvasRenderer.java            cached run geometry
+  compat/ScribbleCompat.java          attaches the same UI to Scribble's screens
+  config/DrawConfig.java              settings file
+  config/DrawConfigScreen.java        settings screen
+  debug/ItemSizeOverlay.java          optional item-size readout
 src/test/java/.../PageBitmapsTest.java   JUnit tests for the bitmap contract
 src/test/java/.../DrawingBlobTest.java   JUnit tests for the blob contract
 paper/                                   standalone Gradle project: the Paper plugin
