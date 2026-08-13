@@ -41,8 +41,9 @@ processResources {
 jar {
 	archiveBaseName = 'drawinbooks-paper'
 
-	// Same licence obligation as the mod jar; the texts live one level up.
-	from("$rootDir/../COPYING", "$rootDir/../COPYING.LESSER", "$rootDir/../LICENSE.md") {
+	// Same licence obligation as the mod jar; the texts live one level up,
+	// since this is a standalone build inside the mod's repository.
+	from(files("../COPYING", "../COPYING.LESSER", "../LICENSE.md")) {
 		rename { "${it}_drawinbooks" }
 	}
 }

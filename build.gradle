@@ -70,7 +70,12 @@ jar {
 
 	// The LGPL requires the license text to travel with the binary, and the
 	// LGPL is the GPL plus additional permissions, so both files go in.
-	from("COPYING", "COPYING.LESSER", "LICENSE.md") {
+	//
+	// files(...) rather than three bare strings: from(Object...) has no
+	// overload taking a trailing closure, so Groovy would pass the closure as
+	// another source, and a closure source evaluates to this very CopySpec -
+	// giving :jar a dependency on itself.
+	from(files("COPYING", "COPYING.LESSER", "LICENSE.md")) {
 		rename { "${it}_$projectName" }
 	}
 }
