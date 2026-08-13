@@ -310,7 +310,7 @@ anything it would only reject.
 
 ```
 src/main/java/com/drawinbooks/
-  DrawInBooks.java                    mod init (registers the component)
+  DrawInBooks.java                    mod init (registers the sync packet)
   component/PageBitmaps.java          pure-Java format constants + validation + pixel ops
   component/DrawingBlob.java          the one wire/storage format, and its validation
   component/BookDrawingStorage.java   read/write inside vanilla custom_data (Bukkit PDC path)
@@ -338,34 +338,37 @@ src/test/java/.../DrawingBlobTest.java   JUnit tests for the blob contract
 paper/                                   standalone Gradle project: the Paper plugin
 ```
 
-## Things to verify in-game (not yet verified — no MC runtime here)
+## Verified in-game
 
-1. `./gradlew build` and `runClient` — first compile may surface small 26.2
-   naming drift; everything risky is isolated:
-   - Page-area constants in `BookLayout` (36/32/114/128 from long-stable
-     vanilla layout) — if the canvas is misaligned, fix the constants against
-     `genSources`' `BookEditScreen`.
-   - `BookEditScreen` shadow/injection targets: `currentPage`, `init`,
-     `saveChanges` (verified against mods compiling for 26.1.2/26.2).
-2. The spec's test checklist:
-   - draw → Done → reopen → drawing persists (singleplayer)
-   - save world → disable mod → book shows text only → re-enable → drawing restored
-   - `/give @p writable_book[drawinbooks:page_drawings=[[B;...]]]` with wrong
-     sizes (≠640 bytes) or >100 pages → renders blank, warning in log, no crash
-   - trade a drawn book between two modded clients → drawing visible to both
-   - stack 16 identical signed books → they stack; differing drawings → they don't
-3. Signing, specifically: the space-reservation runs at `saveChanges` HEAD.
-   If vanilla syncs the on-screen text box into `pages` *after* that point,
-   the page you were viewing when you pressed Sign could still lose its
-   space. Test both "draw on page 2, go back to page 1, Sign" and "draw on
-   page 2 and Sign from page 2"; if only the latter fails, the fix is to also
-   push the space through the screen's own page-content update.
+Everything below has been checked on a real client, and on a server, before
+1.0:
 
-## Explicit non-goals (MVP)
+- draw → Done → reopen → drawing persists
+- draw → **Sign** directly, without pressing Done first → drawing survives the
+  conversion to a written book
+- disable the mod → the book shows text only, nothing is lost → re-enable →
+  drawing is back
+- a malformed blob (wrong page size, or more than 100 pages) → renders blank,
+  one warning in the log, no crash
+- a drawn book passed between two modded clients → both see the same drawing
+- signed books with identical drawings stack; differing drawings don't
+- survival on a server, with the mod or the Paper plugin installed → saves;
+  without either → the drawing is client-only and says so in the log
 
-No multi-color drawings (that would need 2 bits per pixel and double the
-worst-case item size — the single ink color is free), no adjustable brush
-sizes beyond the fixed pen/eraser, no undo/redo, no server-side companion mod,
-no new items/blocks, no compression. Books in lecterns don't show drawings
-yet: that screen has no access to the ItemStack, so the stack would have to be
-passed down from the lectern block entity.
+## Known limits
+
+- **Lecterns** don't show drawings. That screen never gets the `ItemStack`, so
+  the stack would have to be handed down from the lectern block entity.
+- **Three ink colors**, not more. A fourth would need 3 bits per pixel and
+  would grow every book by half again — see
+  [Size](#size-and-the-chunk-ban-question).
+- **No compression.** Pages are stored flat, so the worst case is provable.
+  Sparse pages and delta packets are the obvious next step and are deliberately
+  not in 1.0.
+
+## License
+
+[LGPL-3.0-only](LICENSE.md). Use it, ship it in a modpack, or depend on it from
+a closed-source mod freely; if you modify *this* mod, your changes are LGPL too
+and the source has to be available. Full texts in [`COPYING`](COPYING) and
+[`COPYING.LESSER`](COPYING.LESSER).

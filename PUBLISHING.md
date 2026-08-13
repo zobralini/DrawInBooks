@@ -26,7 +26,7 @@ The mod:
 gradlew build
 ```
 
-Upload `build/libs/drawinbooks-0.3.1.jar` — **not** the `-sources` one. The
+Upload `build/libs/drawinbooks-1.0.0.jar` — **not** the `-sources` one. The
 same jar works on both a client and a Fabric server.
 
 The Paper plugin is a separate Gradle project, because it builds against the
@@ -38,7 +38,7 @@ cd paper
 .\gradlew build
 ```
 
-That produces `paper/build/libs/drawinbooks-paper-0.3.1.jar`. Upload it as a
+That produces `paper/build/libs/drawinbooks-paper-1.0.0.jar`. Upload it as a
 second file on the same Modrinth version, or as its own project — Modrinth
 allows additional files per version, which is the simpler option.
 
@@ -48,13 +48,20 @@ storage format and wire protocol. Everything under `client/` is the client's
 business alone, and an older plugin jar keeps working. The version numbers are
 kept in lockstep purely so it's obvious which pair belongs together.
 
+For 1.0.0 the plugin has no code changes, but it **does** need a rebuild: the
+version number is baked into `plugin.yml`, and the jar now carries the license
+texts.
+
 ## 3. Create the Modrinth project
 
 Every field value and the full page body are in **[MODRINTH.md](MODRINTH.md)**,
 written to be pasted straight in. Short version: name *Draw In Books*, slug
-`draw-in-books`, MIT, client required / server optional, Fabric 26.2, upload
-`drawinbooks-0.3.1.jar` as a **beta** with Fabric API as a required
-dependency, and attach the Paper plugin jar as a second file.
+`draw-in-books`, **LGPL-3.0-only**, client required / server optional, Fabric
+26.2, upload `drawinbooks-1.0.0.jar` as a **release** with Fabric API as a
+required dependency, and attach the Paper plugin jar as a second file.
+
+If the project already exists on Modrinth from an earlier upload, the license
+field has to be changed there by hand — Modrinth does not read it from the jar.
 
 ### Prior art
 
@@ -65,5 +72,13 @@ MODRINTH.md opens on the vanilla feel and on the mod being optional.
 
 ## 4. Version bumps
 
-`mod_version` lives in `gradle.properties`. Tag releases as `v0.1.0` to match;
+`mod_version` lives in `gradle.properties`, and the plugin's in
+`paper/build.gradle` — keep the two the same. Tag releases to match (`v1.0.0`);
 the workflow already triggers on `v*` tags.
+
+## 5. License
+
+The project is **LGPL-3.0-only**. The full texts are in `COPYING` (GPLv3) and
+`COPYING.LESSER` (the LGPL's additional permissions), with a plain-language
+summary in `LICENSE.md`. Both jars are built with all three inside, which is
+what the license actually requires when you distribute a binary.

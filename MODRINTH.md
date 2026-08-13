@@ -9,7 +9,7 @@
 | Project type | Mod |
 | Client side | **Required** |
 | Server side | **Optional** |
-| License | MIT |
+| License | **LGPL-3.0-only** (pick it from Modrinth's list; SPDX id `LGPL-3.0-only`) |
 | Categories | Utility, Decoration |
 | Icon | `src/main/resources/assets/drawinbooks/icon.png` |
 | Source | `https://github.com/zobralini/DrawInBooks` |
@@ -24,19 +24,19 @@
 
 | Field | Value |
 |---|---|
-| File | `build/libs/drawinbooks-0.3.1.jar` (not `-sources`) |
-| Version number | `0.3.1` |
-| Version name | `0.3.1 — first release` |
-| Release channel | **Beta** |
+| File | `build/libs/drawinbooks-1.0.0.jar` (not `-sources`) |
+| Additional file | `paper/build/libs/drawinbooks-paper-1.0.0.jar` |
+| Version number | `1.0.0` |
+| Version name | `1.0.0` |
+| Release channel | **Release** |
 | Loaders | Fabric |
 | Game versions | 26.2 |
 | Dependencies | Fabric API — **required** |
 
-Beta rather than release: everything here has been tested by one person, in
-singleplayer and on a server. Move to Release once a few other people have used
-it without surprises.
+Release channel, not beta: every path in the mod has now been used in a real
+game — singleplayer, a Fabric server, a Paper server, and alongside Scribble.
 
-Version changelog — paste from `CHANGELOG.md`.
+Version changelog — paste the `1.0.0` section from `CHANGELOG.md`.
 
 ---
 
@@ -140,3 +140,6 @@ There's a full breakdown, including measured compression figures, in the
 ## Requirements
 
 Minecraft 26.2 · Fabric Loader 0.19.3+ · Fabric API · Java 25
+
+Free software under the **LGPL-3.0** — put it in a modpack, or build on it,
+without asking. [Source on GitHub](https://github.com/zobralini/DrawInBooks).

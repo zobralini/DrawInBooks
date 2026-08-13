@@ -68,7 +68,9 @@ jar {
 	def projectName = project.name
 	inputs.property "projectName", projectName
 
-	from("LICENSE") {
+	// The LGPL requires the license text to travel with the binary, and the
+	// LGPL is the GPL plus additional permissions, so both files go in.
+	from("COPYING", "COPYING.LESSER", "LICENSE.md") {
 		rename { "${it}_$projectName" }
 	}
 }

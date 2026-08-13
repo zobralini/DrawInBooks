@@ -38,3 +38,6 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+# promo sources (the exported gif/webp is what gets committed, not the raw capture)
+docs/*.mp4

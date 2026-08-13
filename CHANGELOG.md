@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.0.0
+
+First stable release. No behaviour changes since 0.3.1 — this is the same mod,
+declared finished after every path in it has been used in a real game:
+singleplayer, a Fabric server, a Paper server, and alongside Scribble.
+
+- **Now licensed under the [LGPL-3.0](LICENSE.md)** instead of MIT. What this
+  changes in practice: modifications to this mod have to stay free software and
+  publish their source, while anything that merely *depends* on it — including
+  a closed-source mod, or a modpack — is unaffected. Both jars now ship the
+  license texts inside them, as the license requires.
+- The Paper plugin moves to 1.0.0 alongside the mod. No code changes; rebuild
+  it so the version in `plugin.yml` matches the jar you upload.
+- Documentation brought in line with what the mod actually does — the README
+  still described the first prototype's single ink color and missing undo.
+
 ## 0.3.1
 
 - Fixed: **Show drawings while writing** did nothing. The check let the editing
