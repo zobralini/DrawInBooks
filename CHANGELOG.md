@@ -39,9 +39,15 @@ their colors. Nothing needs converting by hand.
 drawing on the page you are looking at and paste it onto another — in the same
 book or a different one. The clipboard holds one page and lives only in memory.
 
-Pasting replaces the target page and is undoable like any other edit. `ⓟ` dims
-when there is nothing to paste. The shortcuts are only intercepted in draw
-mode, so vanilla's text copy and paste still work while typing.
+Pasting is an overlay: only the pixels carrying ink in the copy are written, so
+whatever was already on the page shows through the gaps. That makes the
+clipboard a stamp rather than only a whole-page transfer. Shift-click `ⓟ` to
+replace the page completely instead.
+
+Either way it is undoable like any other edit, and a paste that would change
+nothing does not spend an undo slot. `ⓟ` dims when there is nothing to paste.
+The shortcuts are only intercepted in draw mode, so vanilla's text copy and
+paste still work while typing.
 
 ## 1.0.0
 

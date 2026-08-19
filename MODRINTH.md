@@ -57,7 +57,8 @@ the book, and nothing else about the game changes.
 - **Pen** and **eraser**, each with its own adjustable brush size
 - **Five ink colors** — red, black, blue, green and yellow — mixable on the
   same page
-- **Copy and paste** a whole page, into another page or another book
+- **Copy and paste** a whole page, into another page or another book — it
+  stamps over what's already there rather than wiping it
 - **Undo**, 7 steps deep
 - Drawings live on the book itself, so they travel with it through chests,
   trades and shulker boxes, and they survive **signing** — a finished book
@@ -74,7 +75,8 @@ the book, and nothing else about the game changes.
 | Ctrl + Z | undo |
 | █ button | switch pen color |
 | ⓒ button, or Ctrl + C | copy this page |
-| ⓟ button, or Ctrl + V | paste onto this page |
+| ⓟ button, or Ctrl + V | stamp it onto this page, over what's there |
+| Shift + click ⓟ | paste over the page, replacing it |
 | ◎ button, or Ctrl + G | settings |
 
 While drawing, the page is a canvas only — clicks don't move the text cursor

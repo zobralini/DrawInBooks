@@ -237,23 +237,50 @@ public final class DrawingSession {
 	}
 
 	/**
-	 * Replaces a page with the copied one - in this book or any other. The
-	 * page is replaced outright rather than merged, and the replacement is a
-	 * normal undoable edit.
+	 * Pastes the copied page onto one - in this book or any other.
 	 *
+	 * <p>By default this is an overlay: only the pixels that carry ink in the
+	 * copy are written, so whatever was already on the page shows through the
+	 * gaps. That makes the clipboard usable as a stamp - a border, a signature,
+	 * a template - rather than only as a whole-page transfer. Replacing
+	 * outright is still available, and is what Shift-clicking asks for.
+	 *
+	 * @param replace true to overwrite the page completely, blank pixels
+	 *                included
 	 * @return true if the page changed
 	 */
-	public boolean pastePage(int pageIndex) {
+	public boolean pastePage(int pageIndex, boolean replace) {
 		if (clipboard == null || pageIndex < 0 || pageIndex >= PageBitmaps.MAX_PAGES) {
 			return false;
 		}
 
-		if (Arrays.equals(this.workingPages[pageIndex], clipboard)) {
+		byte[] current = this.workingPages[pageIndex];
+		byte[] result;
+
+		if (replace) {
+			result = clipboard.clone();
+		} else {
+			result = current == null ? PageBitmaps.blankPage() : current.clone();
+
+			for (int y = 0; y < PageBitmaps.HEIGHT; y++) {
+				for (int x = 0; x < PageBitmaps.WIDTH; x++) {
+					int value = PageBitmaps.getColor(clipboard, x, y);
+
+					if (value != PageBitmaps.BLANK) {
+						PageBitmaps.setColor(result, x, y, value);
+					}
+				}
+			}
+		}
+
+		// The merge is built first and compared, so a paste that would change
+		// nothing does not spend an undo slot.
+		if (Arrays.equals(current, result)) {
 			return false;
 		}
 
 		beginEdit(pageIndex);
-		this.workingPages[pageIndex] = clipboard.clone();
+		this.workingPages[pageIndex] = result;
 		touch();
 
 		return true;

@@ -248,9 +248,14 @@ public final class DrawToolbar {
 		update();
 	}
 
-	/** Replaces the page currently being looked at with the copied one. */
+	/**
+	 * Stamps the copied page onto the one being looked at. Shift replaces the
+	 * page outright instead, matching what Shift does on the tools.
+	 */
 	private void onPaste() {
-		this.session.pastePage(this.currentPage.getAsInt());
+		this.session.pastePage(
+				this.currentPage.getAsInt(),
+				isKeyDown(GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_RIGHT_SHIFT));
 		update();
 	}
 

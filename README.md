@@ -52,7 +52,8 @@ yellow. Clicking a tool selects it; held modifiers then act on it:
 | Right mouse button | erase, whichever tool is selected |
 | `█` button | cycle the pen color: red → black → blue → green → yellow |
 | `ⓒ` button, or Ctrl + C | copy the whole page you are looking at |
-| `ⓟ` button, or Ctrl + V | paste it onto this page, in this book or another |
+| `ⓟ` button, or Ctrl + V | stamp it onto this page, in this book or another |
+| Shift + click `ⓟ` | paste over the page, replacing it completely |
 | Ctrl + Z | undo the last stroke or whole-page action (7 deep) |
 
 Colors are per pixel, so one page can hold all five: switching the pen color
@@ -62,9 +63,13 @@ happened elsewhere; the history is per session and is never stored on the item.
 
 The clipboard holds one page, lives only in memory, and is shared by every
 book screen — which is what lets a page be copied out of one book and pasted
-into another. Pasting replaces the target page outright and is itself undoable.
-`ⓟ` dims when there is nothing to paste. Ctrl-C and Ctrl-V are only intercepted
-in draw mode, so vanilla's own text copy and paste keep working while typing.
+into another. Pasting is an **overlay**: only the pixels carrying ink in the
+copy are written, so what was already on the page shows through the gaps and
+the clipboard works as a stamp — a border, a signature, a template. Shift-click
+`ⓟ` to replace the page completely instead. Either way it is a normal undoable
+edit. `ⓟ` dims when there is nothing to paste. Ctrl-C and Ctrl-V are only
+intercepted in draw mode, so vanilla's own text copy and paste keep working
+while typing.
 
 Brush size shows as a superscript on the tool's glyph (`✎¹`, `❌³`). While the
 cursor is over a tool and a modifier is held, that superscript is replaced by
