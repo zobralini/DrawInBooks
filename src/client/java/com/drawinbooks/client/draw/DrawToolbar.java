@@ -48,6 +48,8 @@ public final class DrawToolbar {
 	private static final String GLYPH_PEN = "\u270E"; // pencil: the pen tool
 	private static final String GLYPH_ERASER = "\u274C"; // cross mark: eraser
 	private static final String GLYPH_COLOR = "\u2588"; // full block, tinted with the ink color
+	private static final String GLYPH_COPY = "\u24D2"; // circled c: copy this page
+	private static final String GLYPH_PASTE = "\u24DF"; // circled p: paste onto this page
 	private static final String GLYPH_SETTINGS = "\u25CE"; // bullseye: settings
 
 	/** Shown instead of the size while Ctrl / Alt / Shift is held. */
@@ -74,6 +76,8 @@ public final class DrawToolbar {
 	private IconButton penButton;
 	private IconButton eraserButton;
 	private IconButton colorButton;
+	private IconButton copyButton;
+	private IconButton pasteButton;
 	private IconButton settingsButton;
 
 	/**
@@ -129,13 +133,19 @@ public final class DrawToolbar {
 					this.session.cycleInkColor();
 					update();
 				});
-		this.settingsButton = new IconButton(x, iconY + 3 * ICON, TOGGLE, ICON,
+		this.copyButton = new IconButton(x, iconY + 3 * ICON, TOGGLE, ICON,
+				Component.literal(GLYPH_COPY), this::onCopy);
+		this.pasteButton = new IconButton(x, iconY + 4 * ICON, TOGGLE, ICON,
+				Component.literal(GLYPH_PASTE), this::onPaste);
+		this.settingsButton = new IconButton(x, iconY + 5 * ICON, TOGGLE, ICON,
 				Component.literal(GLYPH_SETTINGS), () -> openSettings(screen));
 
 		widgets.add(this.modeButton);
 		widgets.add(this.penButton);
 		widgets.add(this.eraserButton);
 		widgets.add(this.colorButton);
+		widgets.add(this.copyButton);
+		widgets.add(this.pasteButton);
 		widgets.add(this.settingsButton);
 
 		update();
@@ -191,11 +201,32 @@ public final class DrawToolbar {
 				return true;
 			}
 
-			// Ctrl-Z takes back the last stroke or whole-page action. The
-			// screen never sees the key, so it cannot also undo a text edit.
-			if (event.key() == GLFW.GLFW_KEY_Z && isKeyDown(GLFW.GLFW_KEY_LEFT_CONTROL, GLFW.GLFW_KEY_RIGHT_CONTROL)) {
-				this.session.undo();
-				return false;
+			boolean control = isKeyDown(GLFW.GLFW_KEY_LEFT_CONTROL, GLFW.GLFW_KEY_RIGHT_CONTROL);
+
+			// Ctrl-Z takes back the last stroke or whole-page action, Ctrl-C
+			// and Ctrl-V move a whole page around. The screen never sees these
+			// keys, so they cannot also act on the text - and in text mode this
+			// method has already returned, so vanilla's own Ctrl-C and Ctrl-V
+			// keep working there.
+			if (control) {
+				switch (event.key()) {
+					case GLFW.GLFW_KEY_Z -> {
+						this.session.undo();
+						update();
+						return false;
+					}
+					case GLFW.GLFW_KEY_C -> {
+						onCopy();
+						return false;
+					}
+					case GLFW.GLFW_KEY_V -> {
+						onPaste();
+						return false;
+					}
+					default -> {
+						// falls through to the normal handling below
+					}
+				}
 			}
 
 			return event.key() == GLFW.GLFW_KEY_ESCAPE;
@@ -211,6 +242,18 @@ public final class DrawToolbar {
 	 * grows the brush, Alt shrinks it, and Shift applies the tool to the whole
 	 * page (flood-fill for the pen, wipe for the eraser).
 	 */
+	/** Copies the page currently being looked at, drawing and all. */
+	private void onCopy() {
+		this.session.copyPage(this.currentPage.getAsInt());
+		update();
+	}
+
+	/** Replaces the page currently being looked at with the copied one. */
+	private void onPaste() {
+		this.session.pastePage(this.currentPage.getAsInt());
+		update();
+	}
+
 	private void onTool(Tool tool) {
 		this.session.setTool(tool);
 
@@ -257,6 +300,8 @@ public final class DrawToolbar {
 		this.penButton.visible = draw;
 		this.eraserButton.visible = draw;
 		this.colorButton.visible = draw;
+		this.copyButton.visible = draw;
+		this.pasteButton.visible = draw;
 		this.settingsButton.visible = draw;
 
 		this.penButton.setMessage(toolLabel(this.penButton, GLYPH_PEN, Tool.PEN, mouseX, mouseY));
@@ -264,6 +309,12 @@ public final class DrawToolbar {
 
 		int rgb = this.session.inkColor().rgb();
 		this.colorButton.setMessage(Component.literal(GLYPH_COLOR).withStyle(style -> style.withColor(rgb)));
+
+		// Paste dims itself when there is nothing to paste, which is the only
+		// hint needed that the clipboard is empty.
+		this.pasteButton.setMessage(DrawingSession.hasClipboard()
+				? Component.literal(GLYPH_PASTE)
+				: Component.literal(GLYPH_PASTE).withStyle(ChatFormatting.DARK_GRAY));
 	}
 
 	/** Everything the labels depend on, in one comparable value. */
@@ -288,13 +339,16 @@ public final class DrawToolbar {
 			}
 		}
 
+		// Field widths are sized for the largest value each can hold; the ink
+		// field in particular needs three bits now that there are five colors.
 		return (this.session.isDrawMode() ? 1 : 0)
 				| (this.session.tool().ordinal() << 1)
-				| (this.session.inkColor().ordinal() << 3)
+				| (this.session.inkColor().ordinal() << 2)
 				| (this.session.brushSize(Tool.PEN) << 5)
-				| (this.session.brushSize(Tool.ERASER) << 9)
-				| (hovered << 13)
-				| (modifier << 15);
+				| (this.session.brushSize(Tool.ERASER) << 8)
+				| (hovered << 11)
+				| (modifier << 13)
+				| ((DrawingSession.hasClipboard() ? 1 : 0) << 15);
 	}
 
 	/**

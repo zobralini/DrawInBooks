@@ -22,31 +22,46 @@ import java.util.List;
  *       compressed.</li>
  *   <li>Max pages: {@value #MAX_PAGES} (matches vanilla's book page limit).</li>
  *   <li>Worst-case size per item: {@value #MAX_PAGES}*{@value #BYTES_PER_PAGE}
- *       = {@value #MAX_TOTAL_BYTES} bytes (~356 KB), a hard constant
+ *       = {@value #MAX_TOTAL_BYTES} bytes (~534 KiB), a hard constant
  *       regardless of how the data was produced.</li>
  * </ul>
  *
- * <p>Bit layout: row-major, most significant bits first. Pixel (x, y) is at
- * pixel index {@code i = y * WIDTH + x}, stored in byte {@code i / 4} at bit
- * offset {@code (3 - i % 4) * 2}. Value 0 means blank; 1..{@value #COLOR_COUNT}
- * are ink colors, mapped to actual colors on the client side only.
+ * <p>Bit layout: row-major, most significant bits first, packed continuously
+ * across byte boundaries. Pixel (x, y) is at pixel index
+ * {@code i = y * WIDTH + x} and occupies bits {@code i*3 .. i*3+2} of the page.
+ * Three bits do not tile a byte, so a pixel can straddle two bytes; all access
+ * goes through {@link #getColor} and {@link #setColor}, which handle that.
+ *
+ * <p>Value 0 means blank, 1..{@value #COLOR_COUNT} are ink colors, and 6 and 7
+ * are unused. Unused values can only come from hand-written NBT, and
+ * {@link #getColor} reports them as blank, so no caller has to consider them.
  */
 public final class PageBitmaps {
 	public static final int WIDTH = 114;
 	public static final int HEIGHT = 128;
-	public static final int BITS_PER_PIXEL = 2;
+	public static final int BITS_PER_PIXEL = 3;
 
 	/** Ink colors, i.e. stored values 1..COLOR_COUNT. 0 is always "blank". */
-	public static final int COLOR_COUNT = 3;
+	public static final int COLOR_COUNT = 5;
 
 	public static final int BLANK = 0;
 
-	public static final int PIXELS_PER_BYTE = 8 / BITS_PER_PIXEL; // 4
-	public static final int BYTES_PER_PAGE = WIDTH * HEIGHT * BITS_PER_PIXEL / 8; // 3648
+	public static final int PIXELS_PER_PAGE = WIDTH * HEIGHT; // 14592
+	public static final int BYTES_PER_PAGE = PIXELS_PER_PAGE * BITS_PER_PIXEL / 8; // 5472
 	public static final int MAX_PAGES = 100;
-	public static final int MAX_TOTAL_BYTES = BYTES_PER_PAGE * MAX_PAGES; // 364800
+	public static final int MAX_TOTAL_BYTES = BYTES_PER_PAGE * MAX_PAGES; // 547200
 
-	private static final int VALUE_MASK = (1 << BITS_PER_PIXEL) - 1; // 0b11
+	private static final int VALUE_MASK = (1 << BITS_PER_PIXEL) - 1; // 0b111
+
+	/**
+	 * The version 1 layout: 2 bits per pixel, 3 colors. Only needed to read
+	 * books drawn before green and yellow existed - see
+	 * {@link #upgradeLegacyPage}. Nothing writes it any more.
+	 */
+	public static final int LEGACY_BITS_PER_PIXEL = 2;
+	public static final int LEGACY_COLOR_COUNT = 3;
+	public static final int LEGACY_BYTES_PER_PAGE = PIXELS_PER_PAGE * LEGACY_BITS_PER_PIXEL / 8; // 3648
+	public static final int LEGACY_MAX_TOTAL_BYTES = LEGACY_BYTES_PER_PAGE * MAX_PAGES;
 
 	private PageBitmaps() {
 	}
@@ -66,8 +81,9 @@ public final class PageBitmaps {
 	 * callers must treat the entire drawing as absent (no partial parsing,
 	 * no clamping/truncation).
 	 *
-	 * <p>Note that pixel <em>values</em> need no validation: two bits can only
-	 * ever hold 0..3, so no byte pattern can encode an out-of-range color.
+	 * <p>Pixel <em>values</em> are deliberately not validated here: that would
+	 * mean decoding 1.4 million pixels to reject data that is already harmless,
+	 * because {@link #getColor} reads the two unused values as blank.
 	 */
 	public static boolean isValid(List<byte[]> pages) {
 		if (pages == null || pages.size() > MAX_PAGES) {
@@ -89,8 +105,8 @@ public final class PageBitmaps {
 
 	/**
 	 * Decode-time clamp for the stored "last used pen color" hint. Pixel
-	 * colors themselves need no clamping - they are two bits wide and cannot
-	 * encode an invalid value.
+	 * colors themselves need no clamping - {@link #getColor} already reports
+	 * anything unrecognised as blank.
 	 */
 	public static int clampColorIndex(int index) {
 		return index >= 0 && index < COLOR_COUNT ? index : 0;
@@ -106,16 +122,31 @@ public final class PageBitmaps {
 		return true;
 	}
 
-	/** @return 0 for blank, or 1..{@link #COLOR_COUNT} for an ink color */
+	/**
+	 * @return 0 for blank, or 1..{@link #COLOR_COUNT} for an ink color. The two
+	 *         unused bit patterns read as blank, so every possible byte array
+	 *         describes a drawable page
+	 */
 	public static int getColor(byte[] page, int x, int y) {
 		if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) {
 			return BLANK;
 		}
 
-		int index = y * WIDTH + x;
-		int shift = (PIXELS_PER_BYTE - 1 - index % PIXELS_PER_BYTE) * BITS_PER_PIXEL;
+		int bit = (y * WIDTH + x) * BITS_PER_PIXEL;
+		int byteIndex = bit >> 3;
+		int used = 8 - (bit & 7); // bits of this pixel living in the first byte
+		int value;
 
-		return (page[index / PIXELS_PER_BYTE] >> shift) & VALUE_MASK;
+		if (used >= BITS_PER_PIXEL) {
+			value = (page[byteIndex] & 0xFF) >>> (used - BITS_PER_PIXEL);
+		} else {
+			int spill = BITS_PER_PIXEL - used;
+			value = ((page[byteIndex] & 0xFF) << spill) | ((page[byteIndex + 1] & 0xFF) >>> (8 - spill));
+		}
+
+		value &= VALUE_MASK;
+
+		return value <= COLOR_COUNT ? value : BLANK;
 	}
 
 	/**
@@ -128,30 +159,87 @@ public final class PageBitmaps {
 			return false;
 		}
 
-		int index = y * WIDTH + x;
-		int byteIndex = index / PIXELS_PER_BYTE;
-		int shift = (PIXELS_PER_BYTE - 1 - index % PIXELS_PER_BYTE) * BITS_PER_PIXEL;
+		int bit = (y * WIDTH + x) * BITS_PER_PIXEL;
+		int byteIndex = bit >> 3;
+		int used = 8 - (bit & 7);
 
-		byte old = page[byteIndex];
-		byte updated = (byte) ((old & ~(VALUE_MASK << shift)) | (value << shift));
+		if (used >= BITS_PER_PIXEL) {
+			int shift = used - BITS_PER_PIXEL;
+			byte old = page[byteIndex];
+			byte updated = (byte) ((old & ~(VALUE_MASK << shift)) | (value << shift));
 
-		if (old == updated) {
+			if (old == updated) {
+				return false;
+			}
+
+			page[byteIndex] = updated;
+			return true;
+		}
+
+		// Straddles two bytes: the high bits finish the current byte, the rest
+		// start the next one.
+		int spill = BITS_PER_PIXEL - used;
+
+		byte oldHigh = page[byteIndex];
+		byte oldLow = page[byteIndex + 1];
+
+		byte newHigh = (byte) ((oldHigh & ~((1 << used) - 1)) | (value >>> spill));
+		byte newLow = (byte) ((oldLow & (0xFF >>> spill)) | ((value & ((1 << spill) - 1)) << (8 - spill)));
+
+		if (oldHigh == newHigh && oldLow == newLow) {
 			return false;
 		}
 
-		page[byteIndex] = updated;
+		page[byteIndex] = newHigh;
+		page[byteIndex + 1] = newLow;
 		return true;
 	}
 
 	/** Fills the entire page with one ink color (or blanks it, for value 0). */
 	public static void fill(byte[] page, int value) {
-		int packed = 0;
-
-		for (int i = 0; i < PIXELS_PER_BYTE; i++) {
-			packed = (packed << BITS_PER_PIXEL) | (value & VALUE_MASK);
+		if (value == BLANK) {
+			java.util.Arrays.fill(page, (byte) 0);
+			return;
 		}
 
-		java.util.Arrays.fill(page, (byte) packed);
+		// Three bits do not tile a byte, so there is no single byte to repeat.
+		// Writing pixel by pixel is a few thousand shifts on one click, which
+		// is not worth being clever about.
+		for (int y = 0; y < HEIGHT; y++) {
+			for (int x = 0; x < WIDTH; x++) {
+				setColor(page, x, y, value);
+			}
+		}
+	}
+
+	/**
+	 * Rewrites a version 1 page (2 bits per pixel) in the current layout. The
+	 * three original inks keep their stored values, so red stays red.
+	 *
+	 * @return a new page, or null if the input isn't a legacy page
+	 */
+	public static byte[] upgradeLegacyPage(byte[] legacy) {
+		if (legacy == null || legacy.length != LEGACY_BYTES_PER_PAGE) {
+			return null;
+		}
+
+		byte[] page = blankPage();
+		int pixelsPerByte = 8 / LEGACY_BITS_PER_PIXEL; // 4
+		int mask = (1 << LEGACY_BITS_PER_PIXEL) - 1;
+
+		for (int y = 0; y < HEIGHT; y++) {
+			for (int x = 0; x < WIDTH; x++) {
+				int index = y * WIDTH + x;
+				int shift = (pixelsPerByte - 1 - index % pixelsPerByte) * LEGACY_BITS_PER_PIXEL;
+				int value = (legacy[index / pixelsPerByte] >> shift) & mask;
+
+				if (value != BLANK && value <= LEGACY_COLOR_COUNT) {
+					setColor(page, x, y, value);
+				}
+			}
+		}
+
+		return page;
 	}
 
 	/**

@@ -2,6 +2,7 @@ package com.drawinbooks.client.draw;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 
@@ -20,6 +21,14 @@ public final class DrawingSession {
 
 	/** How many edits can be taken back with Ctrl-Z. */
 	public static final int UNDO_DEPTH = 7;
+
+	/**
+	 * One copied page, shared by every book screen for as long as the game
+	 * runs. Static on purpose: that is what makes it possible to copy a page
+	 * out of one book and paste it into another. It never touches an item and
+	 * is never written to disk - closing the game loses it.
+	 */
+	private static byte[] clipboard;
 
 	/** Brush side length per tool, indexed by {@link Tool#ordinal()}. */
 	private final int[] brushSizes = new int[Tool.values().length];
@@ -78,8 +87,9 @@ public final class DrawingSession {
 	}
 
 	/**
-	 * Cycles the pen color red - black - blue. This only changes what future
-	 * strokes are drawn in; pixels already on the page keep their own color.
+	 * Cycles the pen color red - black - blue - green - yellow. This only
+	 * changes what future strokes are drawn in; pixels already on the page keep
+	 * their own color.
 	 */
 	public void cycleInkColor() {
 		this.inkColor = this.inkColor.next();
@@ -201,6 +211,52 @@ public final class DrawingSession {
 		touch();
 
 		return snapshot.pageIndex();
+	}
+
+	/** Whether there is a copied page waiting to be pasted. */
+	public static boolean hasClipboard() {
+		return clipboard != null;
+	}
+
+	/**
+	 * Copies the whole drawing on one page. Copying a page with nothing on it
+	 * does nothing rather than emptying the clipboard, so a stray Ctrl-C on a
+	 * fresh page can't lose what you were about to paste.
+	 *
+	 * @return true if something was copied
+	 */
+	public boolean copyPage(int pageIndex) {
+		byte[] page = peekPage(pageIndex);
+
+		if (page == null || PageBitmaps.isBlank(page)) {
+			return false;
+		}
+
+		clipboard = page.clone();
+		return true;
+	}
+
+	/**
+	 * Replaces a page with the copied one - in this book or any other. The
+	 * page is replaced outright rather than merged, and the replacement is a
+	 * normal undoable edit.
+	 *
+	 * @return true if the page changed
+	 */
+	public boolean pastePage(int pageIndex) {
+		if (clipboard == null || pageIndex < 0 || pageIndex >= PageBitmaps.MAX_PAGES) {
+			return false;
+		}
+
+		if (Arrays.equals(this.workingPages[pageIndex], clipboard)) {
+			return false;
+		}
+
+		beginEdit(pageIndex);
+		this.workingPages[pageIndex] = clipboard.clone();
+		touch();
+
+		return true;
 	}
 
 	/** Paints a single brush dab centered on the given bitmap pixel. */

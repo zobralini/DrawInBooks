@@ -57,6 +57,9 @@ public final class DrawingPersistence {
 	/** Inventory slot index of the offhand, as used by creative set-slot packets. */
 	private static final int OFFHAND_PACKET_SLOT = 45;
 
+	/** "This book has no drawing any more", as the server reads it. */
+	private static final byte[] EMPTY_BLOB = new byte[0];
+
 	private static byte[] pendingBlob;
 	private static InteractionHand pendingHand;
 	private static int pendingSlot = -1;
@@ -148,16 +151,11 @@ public final class DrawingPersistence {
 		}
 
 		// A server with the mod (or the Paper plugin) accepts this channel;
-		// canSend is false on a plain vanilla server, so nothing is sent to
-		// one that would only reject it.
+		// canSend is false on a plain vanilla server - and on one still running
+		// an older version, which announced a different channel - so nothing is
+		// sent to a server that would only reject it.
 		if (ClientPlayNetworking.canSend(DrawingSyncPayload.TYPE)) {
-			byte[] blob = pendingBlob == null ? new byte[0] : pendingBlob;
-
-			if (DrawingBlob.isValid(blob)) {
-				ClientPlayNetworking.send(new DrawingSyncPayload(
-						pendingHand == InteractionHand.OFF_HAND ? 1 : 0, blob));
-			}
-
+			sendChunked(pendingBlob);
 			return;
 		}
 
@@ -172,9 +170,38 @@ public final class DrawingPersistence {
 		if (pendingBlob != null && !warnedAboutServer) {
 			warnedAboutServer = true;
 			DrawInBooks.LOGGER.warn(
-					"This server has neither the Draw In Books mod nor its Paper plugin, and you are not in "
-							+ "creative - the drawing cannot be stored server side and will disappear on the next "
-							+ "inventory sync.");
+					"This server has neither the Draw In Books mod nor its Paper plugin (or is running a version "
+							+ "older than 1.1.0), and you are not in creative - the drawing cannot be stored server "
+							+ "side and will disappear on the next inventory sync.");
+		}
+	}
+
+	/**
+	 * Sends the drawing as a run of chunks, because vanilla disconnects a
+	 * client whose custom payload exceeds 32 767 bytes and a full drawing is
+	 * many times that. The server applies nothing until the last chunk lands,
+	 * so a half-sent drawing can never overwrite a whole one.
+	 *
+	 * @param blob the drawing, or null to clear the book's drawing - which is
+	 *             sent as a single empty chunk, so erasing everything syncs
+	 *             just like drawing does
+	 */
+	private static void sendChunked(byte[] blob) {
+		byte[] data = blob == null ? EMPTY_BLOB : blob;
+
+		if (data.length > 0 && !DrawingBlob.isValid(data)) {
+			return; // never send something the server would only reject
+		}
+
+		int hand = pendingHand == InteractionHand.OFF_HAND ? 1 : 0;
+		int count = DrawingSyncPayload.chunkCountFor(data.length);
+
+		for (int i = 0; i < count; i++) {
+			int from = i * DrawingSyncPayload.MAX_CHUNK_BYTES;
+			int to = Math.min(from + DrawingSyncPayload.MAX_CHUNK_BYTES, data.length);
+
+			ClientPlayNetworking.send(new DrawingSyncPayload(
+					hand, i, count, Arrays.copyOfRange(data, from, to)));
 		}
 	}
 
@@ -226,7 +253,7 @@ public final class DrawingPersistence {
 	/**
 	 * Writes only when the item doesn't already carry exactly this drawing.
 	 * The re-apply window runs for two seconds, and a write means deep-copying
-	 * the item's whole NBT plus the blob - up to 356 KiB - so repeating it
+	 * the item's whole NBT plus the blob - up to 534 KiB - so repeating it
 	 * every tick for a book that already took the change is pure garbage.
 	 */
 	private static void apply(ItemStack stack, byte[] blob) {

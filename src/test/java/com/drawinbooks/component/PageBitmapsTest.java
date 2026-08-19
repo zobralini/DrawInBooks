@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -34,17 +35,22 @@ class PageBitmapsTest {
 	void formatConstantsAreTheHardContract() {
 		assertEquals(114, PageBitmaps.WIDTH);
 		assertEquals(128, PageBitmaps.HEIGHT);
-		assertEquals(2, PageBitmaps.BITS_PER_PIXEL);
-		assertEquals(3, PageBitmaps.COLOR_COUNT);
-		assertEquals(3648, PageBitmaps.BYTES_PER_PAGE);
+		assertEquals(3, PageBitmaps.BITS_PER_PIXEL);
+		assertEquals(5, PageBitmaps.COLOR_COUNT);
+		assertEquals(5472, PageBitmaps.BYTES_PER_PAGE);
 		assertEquals(100, PageBitmaps.MAX_PAGES);
-		assertEquals(364800, PageBitmaps.MAX_TOTAL_BYTES);
+		assertEquals(547200, PageBitmaps.MAX_TOTAL_BYTES);
 
 		// The bitmap must divide evenly into bytes - no padding, no ambiguity.
 		assertEquals(0, PageBitmaps.WIDTH * PageBitmaps.HEIGHT * PageBitmaps.BITS_PER_PIXEL % 8);
 
-		// Two bits must be able to hold blank plus every ink color.
+		// The bits per pixel must hold blank plus every ink color.
 		assertTrue(PageBitmaps.COLOR_COUNT < (1 << PageBitmaps.BITS_PER_PIXEL));
+
+		// The layout this build can still read, but no longer writes.
+		assertEquals(2, PageBitmaps.LEGACY_BITS_PER_PIXEL);
+		assertEquals(3, PageBitmaps.LEGACY_COLOR_COUNT);
+		assertEquals(3648, PageBitmaps.LEGACY_BYTES_PER_PAGE);
 	}
 
 	@Test
@@ -90,31 +96,97 @@ class PageBitmapsTest {
 		int maxX = PageBitmaps.WIDTH - 1;
 		int maxY = PageBitmaps.HEIGHT - 1;
 
+		// Pixel 2 straddles the first and second byte (bits 6..8), which is the
+		// case three bits per pixel makes possible and two never did.
 		assertTrue(PageBitmaps.setColor(page, 0, 0, 1));
 		assertTrue(PageBitmaps.setColor(page, 1, 0, 2));
-		assertTrue(PageBitmaps.setColor(page, 2, 0, 3));
+		assertTrue(PageBitmaps.setColor(page, 2, 0, 5));
+		assertTrue(PageBitmaps.setColor(page, 3, 0, 4));
 		assertTrue(PageBitmaps.setColor(page, maxX, maxY, 3));
 
 		// Neighboring pixels share a byte - they must not bleed into each other.
 		assertEquals(1, PageBitmaps.getColor(page, 0, 0));
 		assertEquals(2, PageBitmaps.getColor(page, 1, 0));
-		assertEquals(3, PageBitmaps.getColor(page, 2, 0));
-		assertEquals(PageBitmaps.BLANK, PageBitmaps.getColor(page, 3, 0));
+		assertEquals(5, PageBitmaps.getColor(page, 2, 0));
+		assertEquals(4, PageBitmaps.getColor(page, 3, 0));
+		assertEquals(PageBitmaps.BLANK, PageBitmaps.getColor(page, 4, 0));
 		assertEquals(3, PageBitmaps.getColor(page, maxX, maxY));
 		assertFalse(PageBitmaps.isBlank(page));
 
 		// Setting the same value again reports "no change".
 		assertFalse(PageBitmaps.setColor(page, 1, 0, 2));
+		assertFalse(PageBitmaps.setColor(page, 2, 0, 5));
 
-		// Recoloring and erasing.
+		// Recoloring and erasing, on a straddling pixel too.
 		assertTrue(PageBitmaps.setColor(page, 1, 0, 3));
 		assertEquals(3, PageBitmaps.getColor(page, 1, 0));
 		assertTrue(PageBitmaps.setColor(page, 1, 0, PageBitmaps.BLANK));
 		assertEquals(PageBitmaps.BLANK, PageBitmaps.getColor(page, 1, 0));
+
+		assertTrue(PageBitmaps.setColor(page, 2, 0, PageBitmaps.BLANK));
+		assertEquals(PageBitmaps.BLANK, PageBitmaps.getColor(page, 2, 0));
+		assertEquals(4, PageBitmaps.getColor(page, 3, 0), "erasing must not disturb its neighbor");
 	}
 
 	@Test
-	void everyPixelIsAddressableAndIndependent() {
+	void everyPixelIsIndependentOfItsNeighbors() {
+		byte[] page = PageBitmaps.blankPage();
+
+		// A different color on every consecutive pixel, so any bleed between
+		// the bit fields shows up as a mismatch rather than by luck.
+		for (int y = 0; y < PageBitmaps.HEIGHT; y++) {
+			for (int x = 0; x < PageBitmaps.WIDTH; x++) {
+				PageBitmaps.setColor(page, x, y, 1 + (y * PageBitmaps.WIDTH + x) % PageBitmaps.COLOR_COUNT);
+			}
+		}
+
+		for (int y = 0; y < PageBitmaps.HEIGHT; y++) {
+			for (int x = 0; x < PageBitmaps.WIDTH; x++) {
+				assertEquals(1 + (y * PageBitmaps.WIDTH + x) % PageBitmaps.COLOR_COUNT,
+						PageBitmaps.getColor(page, x, y), x + "," + y);
+			}
+		}
+	}
+
+	@Test
+	void unusedBitPatternsReadAsBlank() {
+		byte[] page = PageBitmaps.blankPage();
+
+		// Three bits can hold 6 and 7, which name no color. Only hand-written
+		// NBT can produce them, and they must read as blank rather than as
+		// some arbitrary ink.
+		java.util.Arrays.fill(page, (byte) 0xFF); // every pixel is 7
+
+		assertEquals(PageBitmaps.BLANK, PageBitmaps.getColor(page, 0, 0));
+		assertEquals(PageBitmaps.BLANK, PageBitmaps.getColor(page, 1, 0));
+		assertEquals(PageBitmaps.BLANK, PageBitmaps.getColor(page, 2, 0));
+		assertEquals(PageBitmaps.BLANK,
+				PageBitmaps.getColor(page, PageBitmaps.WIDTH - 1, PageBitmaps.HEIGHT - 1));
+	}
+
+	@Test
+	void legacyPagesUpgradeWithTheirColorsIntact() {
+		byte[] legacy = new byte[PageBitmaps.LEGACY_BYTES_PER_PAGE];
+
+		// Version 1 layout: 4 pixels per byte, 2 bits each, MSB first.
+		legacy[0] = (byte) 0b01_10_11_00; // pixels 0..3 = red, black, blue, blank
+
+		byte[] upgraded = PageBitmaps.upgradeLegacyPage(legacy);
+
+		assertEquals(PageBitmaps.BYTES_PER_PAGE, upgraded.length);
+		assertEquals(1, PageBitmaps.getColor(upgraded, 0, 0));
+		assertEquals(2, PageBitmaps.getColor(upgraded, 1, 0));
+		assertEquals(3, PageBitmaps.getColor(upgraded, 2, 0));
+		assertEquals(PageBitmaps.BLANK, PageBitmaps.getColor(upgraded, 3, 0));
+
+		// Anything that isn't a legacy page is refused rather than guessed at.
+		assertNull(PageBitmaps.upgradeLegacyPage(null));
+		assertNull(PageBitmaps.upgradeLegacyPage(PageBitmaps.blankPage()));
+		assertNull(PageBitmaps.upgradeLegacyPage(new byte[7]));
+	}
+
+	@Test
+	void everyPixelIsAddressableAndTheLayoutCoversTheArrayExactly() {
 		byte[] page = PageBitmaps.blankPage();
 
 		for (int y = 0; y < PageBitmaps.HEIGHT; y++) {
@@ -123,10 +195,15 @@ class PageBitmapsTest {
 			}
 		}
 
-		// Filling every pixel with the highest color must set every bit -
-		// proof that the layout covers the array exactly, nothing left over.
-		for (byte b : page) {
-			assertEquals((byte) 0xFF, b);
+		// Every pixel set to 5 (0b101) makes the whole array the bit pattern
+		// 101101101... which lands on a 3-byte cycle. If a single pixel were
+		// mislocated, or the array were one byte too long or short, this would
+		// not hold anywhere but at the start.
+		byte[] cycle = { (byte) 0xB6, (byte) 0xDB, (byte) 0x6D };
+		assertEquals(0, PageBitmaps.BYTES_PER_PAGE % cycle.length);
+
+		for (int i = 0; i < page.length; i++) {
+			assertEquals(cycle[i % cycle.length], page[i], "byte " + i);
 		}
 
 		// And every pixel reads back as that color, not just the bytes.

@@ -17,17 +17,17 @@
 
 ## Summary (the one-line description)
 
-> Draw on book and quill pages in three colors, without touching the text. Pure
+> Draw on book and quill pages in five colors, without touching the text. Pure
 > vanilla feel, and optional — players without the mod just see a normal book.
 
 ## Version upload
 
 | Field | Value |
 |---|---|
-| File | `build/libs/drawinbooks-1.0.0.jar` (not `-sources`) |
-| Additional file | `paper/build/libs/drawinbooks-paper-1.0.0.jar` |
-| Version number | `1.0.0` |
-| Version name | `1.0.0` |
+| File | `build/libs/drawinbooks-1.1.0.jar` (not `-sources`) |
+| Additional file | `paper/build/libs/drawinbooks-paper-1.1.0.jar` |
+| Version number | `1.1.0` |
+| Version name | `1.1.0` |
 | Release channel | **Release** |
 | Loaders | Fabric |
 | Game versions | 26.2 |
@@ -36,7 +36,7 @@
 Release channel, not beta: every path in the mod has now been used in a real
 game — singleplayer, a Fabric server, a Paper server, and alongside Scribble.
 
-Version changelog — paste the `1.0.0` section from `CHANGELOG.md`.
+Version changelog — paste the `1.1.0` section from `CHANGELOG.md`.
 
 ---
 
@@ -55,7 +55,9 @@ the book, and nothing else about the game changes.
 ## Drawing
 
 - **Pen** and **eraser**, each with its own adjustable brush size
-- **Three ink colors** — red, black and blue — mixable on the same page
+- **Five ink colors** — red, black, blue, green and yellow — mixable on the
+  same page
+- **Copy and paste** a whole page, into another page or another book
 - **Undo**, 7 steps deep
 - Drawings live on the book itself, so they travel with it through chests,
   trades and shulker boxes, and they survive **signing** — a finished book
@@ -71,6 +73,8 @@ the book, and nothing else about the game changes.
 | Shift + click the eraser | wipe the whole page |
 | Ctrl + Z | undo |
 | █ button | switch pen color |
+| ⓒ button, or Ctrl + C | copy this page |
+| ⓟ button, or Ctrl + V | paste onto this page |
 | ◎ button, or Ctrl + G | settings |
 
 While drawing, the page is a canvas only — clicks don't move the text cursor
@@ -115,9 +119,14 @@ plainly:
 ## Servers
 
 Drawings save on a server **if the server has the mod too** — the same jar
-works server side, and there's a **Paper plugin** attached to this version for
-servers that don't run Fabric. Install either one and drawing works in
-survival for everyone, with no permissions to hand out.
+works server side, and there's a **plugin** attached to this version for
+servers that don't run Fabric. It uses nothing but the Bukkit API, so it runs
+on Bukkit, Spigot, Paper and the Paper forks alike. Install either one and
+drawing works in survival for everyone, with no permissions to hand out.
+
+**Update both together.** 1.1.0 changed how the drawing reaches the server, so
+a 1.1.0 client will not save to a 1.0.0 server or plugin. It says so in the log
+rather than failing quietly, but the fix is to update both sides.
 
 Without one of them, on a plain vanilla server in survival, a drawing stays on
 your client and disappears on the next inventory sync. That's not something a
@@ -129,9 +138,9 @@ and creative work regardless.
 
 Books with too much data are a real problem in Minecraft — that's the basis of
 the chunk ban exploit. So the format is fixed and bounded rather than
-open-ended: every page is exactly 3 648 bytes, a book holds at most 100 pages,
+open-ended: every page is exactly 5 472 bytes, a book holds at most 100 pages,
 and anything that isn't exactly that is rejected on load as a whole rather
-than partially parsed. One book is provably at most ~356 KiB, about 1.19× the
+than partially parsed. One book is provably at most ~534 KiB, about 1.78× the
 heaviest possible vanilla text book.
 
 There's a full breakdown, including measured compression figures, in the

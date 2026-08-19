@@ -1,5 +1,6 @@
 package com.drawinbooks.paper;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -15,7 +16,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 /**
- * Server side of Draw In Books for Paper.
+ * Server side of Draw In Books for Bukkit-family servers (Bukkit, Spigot,
+ * Paper and its forks - nothing here uses a Paper-only API).
  *
  * <p>Why this exists: no vanilla packet lets a survival player attach data to
  * an item, so a drawing made on a server would live only on the drawer's
@@ -26,21 +28,56 @@ import org.bukkit.plugin.messaging.PluginMessageListener;
  * ends up inside vanilla {@code custom_data}, exactly where the client reads
  * it. Players without the mod are unaffected: to them it is an ordinary book.
  *
- * <p>Nothing here trusts the client. The message must be well formed, the blob
- * must match the fixed format byte for byte, the target must be a book the
- * player is actually holding, and each player is rate limited.
+ * <p>A drawing arrives as a run of chunks rather than one message, because a
+ * client cannot send a custom payload larger than 32 767 bytes without being
+ * disconnected, and a full drawing is many times that. Chunks are buffered per
+ * player and only applied once the last one lands.
+ *
+ * <p>Nothing here trusts the client. The message must be well formed, chunks
+ * must arrive in order and within the size cap, the blob must match the fixed
+ * format byte for byte, the target must be a book the player is actually
+ * holding, and each player is rate limited.
  */
 public final class DrawInBooksPlugin extends JavaPlugin implements PluginMessageListener {
-	/** Must match DrawingSyncPayload.ID on the mod side. */
-	private static final String CHANNEL = "drawinbooks:draw";
+	/**
+	 * Must match DrawingSyncPayload.ID on the mod side. The trailing 2 marks
+	 * the chunked protocol: an older client announces only "drawinbooks:draw"
+	 * and simply finds nobody listening, instead of sending a message this
+	 * plugin would misread.
+	 */
+	private static final String CHANNEL = "drawinbooks:draw2";
 
 	/** Must match BookDrawingStorage.KEY - Bukkit renders this as "drawinbooks:pages". */
 	private static final String KEY = "pages";
 
+	/** Must match DrawingSyncPayload.MAX_CHUNK_BYTES. */
+	private static final int MAX_CHUNK_BYTES = 16384;
+
+	private static final int MAX_CHUNKS = (DrawingBlob.MAX_BYTES + MAX_CHUNK_BYTES - 1) / MAX_CHUNK_BYTES;
+
 	private static final long COOLDOWN_MS = 500;
 
+	/** A half-finished transfer this old is abandoned. */
+	private static final long TRANSFER_TIMEOUT_MS = 10_000;
+
 	private final Map<UUID, Long> lastAccepted = new HashMap<>();
+	private final Map<UUID, Transfer> transfers = new HashMap<>();
 	private NamespacedKey dataKey;
+
+	/** One in-flight drawing: the chunks received so far, in order. */
+	private static final class Transfer {
+		private final byte[] buffer;
+		private final int chunkCount;
+		private int nextIndex;
+		private int length;
+		private long updatedAt;
+
+		private Transfer(int chunkCount) {
+			this.chunkCount = chunkCount;
+			this.buffer = new byte[chunkCount * MAX_CHUNK_BYTES];
+			this.updatedAt = System.currentTimeMillis();
+		}
+	}
 
 	@Override
 	public void onEnable() {
@@ -53,19 +90,34 @@ public final class DrawInBooksPlugin extends JavaPlugin implements PluginMessage
 	public void onDisable() {
 		getServer().getMessenger().unregisterIncomingPluginChannel(this, CHANNEL, this);
 		this.lastAccepted.clear();
+		this.transfers.clear();
 	}
 
 	@Override
 	public void onPluginMessageReceived(String channel, Player player, byte[] message) {
-		if (!CHANNEL.equals(channel) || isRateLimited(player)) {
+		if (!CHANNEL.equals(channel)) {
 			return;
 		}
 
 		Reader reader = new Reader(message);
 		int hand = reader.readVarInt();
-		byte[] blob = reader.readByteArray(DrawingBlob.MAX_BYTES);
+		int chunkIndex = reader.readVarInt();
+		int chunkCount = reader.readVarInt();
+		byte[] chunk = reader.readByteArray(MAX_CHUNK_BYTES);
 
-		if (reader.failed() || !DrawingBlob.isValid(blob)) {
+		if (reader.failed()) {
+			this.transfers.remove(player.getUniqueId());
+			return;
+		}
+
+		byte[] blob = collect(player.getUniqueId(), chunkIndex, chunkCount, chunk);
+
+		if (blob == null || isRateLimited(player)) {
+			return;
+		}
+
+		// An empty blob means "this book has no drawing any more".
+		if (blob.length > 0 && !DrawingBlob.isValid(blob)) {
 			return;
 		}
 
@@ -83,9 +135,63 @@ public final class DrawInBooksPlugin extends JavaPlugin implements PluginMessage
 			return;
 		}
 
-		meta.getPersistentDataContainer().set(this.dataKey, PersistentDataType.BYTE_ARRAY, blob);
+		if (blob.length == 0) {
+			meta.getPersistentDataContainer().remove(this.dataKey);
+		} else {
+			meta.getPersistentDataContainer().set(this.dataKey, PersistentDataType.BYTE_ARRAY, blob);
+		}
+
 		stack.setItemMeta(meta);
 		player.getInventory().setItem(slot, stack);
+	}
+
+	/**
+	 * Adds one chunk to the player's in-flight transfer.
+	 *
+	 * @return the assembled blob once the final chunk has arrived, otherwise
+	 *         null - which also covers every rejection
+	 */
+	private byte[] collect(UUID playerId, int index, int count, byte[] chunk) {
+		if (count < 1 || count > MAX_CHUNKS || index < 0 || index >= count) {
+			this.transfers.remove(playerId);
+			return null;
+		}
+
+		// Every chunk but the last must be full, so a client cannot describe a
+		// long transfer and then dribble it out a byte at a time.
+		if (index < count - 1 && chunk.length != MAX_CHUNK_BYTES) {
+			this.transfers.remove(playerId);
+			return null;
+		}
+
+		long now = System.currentTimeMillis();
+		Transfer transfer = this.transfers.get(playerId);
+
+		if (index == 0) {
+			transfer = new Transfer(count); // a restart is normal after a failed send
+			this.transfers.put(playerId, transfer);
+		} else if (transfer == null || transfer.chunkCount != count || transfer.nextIndex != index
+				|| now - transfer.updatedAt > TRANSFER_TIMEOUT_MS) {
+			this.transfers.remove(playerId);
+			return null;
+		}
+
+		if (transfer.length + chunk.length > DrawingBlob.MAX_BYTES) {
+			this.transfers.remove(playerId);
+			return null;
+		}
+
+		System.arraycopy(chunk, 0, transfer.buffer, transfer.length, chunk.length);
+		transfer.length += chunk.length;
+		transfer.nextIndex = index + 1;
+		transfer.updatedAt = now;
+
+		if (transfer.nextIndex < count) {
+			return null;
+		}
+
+		this.transfers.remove(playerId);
+		return Arrays.copyOf(transfer.buffer, transfer.length);
 	}
 
 	private static boolean isBook(Material material) {
@@ -106,7 +212,7 @@ public final class DrawInBooksPlugin extends JavaPlugin implements PluginMessage
 
 	/**
 	 * Minimal reader for the Minecraft wire format the mod's payload codec
-	 * produces: a VarInt, then a VarInt length followed by that many bytes.
+	 * produces: VarInts, then a VarInt length followed by that many bytes.
 	 * Written by hand so this plugin needs no Minecraft classes. Any
 	 * malformed input sets {@link #failed()} instead of throwing.
 	 */

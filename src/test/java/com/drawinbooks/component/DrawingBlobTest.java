@@ -57,7 +57,49 @@ class DrawingBlobTest {
 
 		assertTrue(DrawingBlob.isValid(blob));
 		assertEquals(DrawingBlob.MAX_BYTES, blob.length);
-		assertEquals(364_802, blob.length);
+		assertEquals(547_202, blob.length);
+	}
+
+	@Test
+	void version1BlobsAreStillReadAndComeBackUpgraded() {
+		// A book drawn before green and yellow existed: two pages in the old
+		// 2-bit layout, with red on the first pixel of each.
+		byte[] legacy = new byte[DrawingBlob.HEADER_BYTES + 2 * PageBitmaps.LEGACY_BYTES_PER_PAGE];
+		legacy[0] = DrawingBlob.VERSION_LEGACY;
+		legacy[1] = 2; // blue was the last pen used
+		legacy[DrawingBlob.HEADER_BYTES] = 0b01_00_00_00;
+		legacy[DrawingBlob.HEADER_BYTES + PageBitmaps.LEGACY_BYTES_PER_PAGE] = 0b01_00_00_00;
+
+		assertTrue(DrawingBlob.isValid(legacy));
+		assertEquals(2, DrawingBlob.pageCount(legacy));
+
+		DrawingBlob.Decoded decoded = DrawingBlob.decode(legacy);
+
+		assertNotNull(decoded);
+		assertEquals(2, decoded.colorIndex());
+		assertEquals(2, decoded.pages().size());
+
+		// Upgraded in place: current-size pages, colors unchanged.
+		for (byte[] page : decoded.pages()) {
+			assertEquals(PageBitmaps.BYTES_PER_PAGE, page.length);
+			assertEquals(1, PageBitmaps.getColor(page, 0, 0));
+		}
+
+		// Re-encoding stores the current version, so a book upgrades itself
+		// the first time it is saved.
+		byte[] reencoded = DrawingBlob.encode(decoded.pages(), decoded.colorIndex());
+		assertEquals(DrawingBlob.VERSION, reencoded[0]);
+
+		// A legacy blob may only name one of the three inks it knew about.
+		byte[] impossibleColor = legacy.clone();
+		impossibleColor[1] = 4; // yellow, which version 1 could not store
+		assertFalse(DrawingBlob.isValid(impossibleColor));
+
+		// The two layouts must not be confusable: legacy page bytes in a
+		// version 2 blob is the wrong length and is rejected.
+		byte[] mismatched = legacy.clone();
+		mismatched[0] = DrawingBlob.VERSION;
+		assertFalse(DrawingBlob.isValid(mismatched));
 	}
 
 	@Test

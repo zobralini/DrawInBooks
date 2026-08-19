@@ -50,13 +50,21 @@ yellow. Clicking a tool selects it; held modifiers then act on it:
 | Shift + click pen | flood the whole page with ink |
 | Shift + click eraser | wipe the whole page |
 | Right mouse button | erase, whichever tool is selected |
-| `█` button | cycle the pen color: red → black → blue |
+| `█` button | cycle the pen color: red → black → blue → green → yellow |
+| `ⓒ` button, or Ctrl + C | copy the whole page you are looking at |
+| `ⓟ` button, or Ctrl + V | paste it onto this page, in this book or another |
 | Ctrl + Z | undo the last stroke or whole-page action (7 deep) |
 
-Colors are per pixel, so one page can hold all three: switching the pen color
+Colors are per pixel, so one page can hold all five: switching the pen color
 only affects what you draw next, never what's already on the page. Undo
 snapshots a page before each stroke and flips back to that page if the edit
 happened elsewhere; the history is per session and is never stored on the item.
+
+The clipboard holds one page, lives only in memory, and is shared by every
+book screen — which is what lets a page be copied out of one book and pasted
+into another. Pasting replaces the target page outright and is itself undoable.
+`ⓟ` dims when there is nothing to paste. Ctrl-C and Ctrl-V are only intercepted
+in draw mode, so vanilla's own text copy and paste keep working while typing.
 
 Brush size shows as a superscript on the tool's glyph (`✎¹`, `❌³`). While the
 cursor is over a tool and a modifier is held, that superscript is replaced by
@@ -76,7 +84,7 @@ drawn before the screen paints its own text.)
 
 Alongside the pages sits one clamped byte: the pen color the player last used,
 so reopening a book resumes on it. Pixel colors themselves live in the bitmap,
-two bits each.
+three bits each.
 
 ### Settings
 
@@ -120,14 +128,18 @@ write the same bytes in the same place, instead of two formats to keep in
 sync. A flat byte array for the same reason — the PDC has no structured
 types, so structure would have meant two encodings.
 
-- 114×128 px, **2 bits per pixel** — blank plus three ink colors, so one page
-  can mix colors → exactly **3 648 bytes per page**, always. The resolution
+- 114×128 px, **3 bits per pixel** — blank plus five ink colors, so one page
+  can mix colors → exactly **5 472 bytes per page**, always. The resolution
   equals the page text area in GUI pixels, so one bitmap pixel is one GUI pixel
   and the canvas fills the page with a perfectly uniform grid.
-- max **100 pages** (vanilla's limit) → hard worst case **364 800 bytes**
-  (~356 KB) per item. See the size note below.
+- max **100 pages** (vanilla's limit) → hard worst case **547 200 bytes**
+  (~534 KiB) per item. See the size note below.
 - no compression of any kind (no decompression-bomb surface)
-- pixel values need no validation: two bits cannot encode an invalid color
+- pixel values need no validation either: three bits leave two unused patterns,
+  and `getColor` reports those as blank, so every possible byte array describes
+  a drawable page
+- **version 1** (2 bits per pixel, three colors) is still read and upgraded on
+  load, so books drawn before green and yellow existed keep their drawings
 
 ### Size, and the "chunk ban" question
 
@@ -146,68 +158,75 @@ characters, and NBT strings are modified UTF-8, so a character can cost up to
 
 **This mod's ceiling**, from the format constants:
 
-    100 × 3 648     =  364 800 B  ≈ 356 KiB per book   → 1.19× vanilla
+    100 × 5 472     =  547 200 B  ≈ 534 KiB per book   → 1.78× vanilla
 
-So a drawn book is about 19 % heavier than the heaviest legitimate vanilla
-book. Same order of magnitude, not a new class of risk. Per shulker (27
-slots — neither books nor drawings stack once their data differs):
+So a fully drawn book is about 78 % heavier than the heaviest legitimate
+vanilla book. Same order of magnitude, not a new class of risk — but the
+margin narrowed when the fourth and fifth inks pushed the format from 2 bits
+per pixel to 3. Per shulker (27 slots — neither books nor drawings stack once
+their data differs):
 
 | | per book | × 27 |
 |---|---|---|
 | vanilla text | 300 KiB | 7.9 MiB |
-| + drawing | 356 KiB | 9.4 MiB |
+| + drawing | 534 KiB | 14.1 MiB |
+| text *and* drawing | 834 KiB | 22.0 MiB |
 
 For reference the protocol ceilings are 8 388 608 B raw / 2 097 152 B
-compressed, so that last row is the one that crosses a line vanilla text
-doesn't quite reach.
+compressed, so those last two rows cross a line vanilla text doesn't quite
+reach.
 
 **Where this mod is genuinely worse: effort.** Vanilla makes you paste 1 024
 characters into each of 100 pages. Here, *a single pixel on a page costs the
-full 3 648 bytes* — size doesn't depend on how much you drew. One dot per page
+full 5 472 bytes* — size doesn't depend on how much you drew. One dot per page
 across 100 pages produces a maxed-out book. Reaching the ceiling is roughly
 one click per page instead of one paste per page.
 
 **Text and drawings stack.** A book can carry both, so the true worst case per
-item is 307 200 + 364 800 = **672 000 B ≈ 656 KiB, 2.19× vanilla**. At that
-size 13 books cross the 8 MiB raw ceiling — half a shulker — whereas 27 maxed
-vanilla text books (7.9 MiB) don't quite reach it.
+item is 307 200 + 547 200 = **854 400 B ≈ 834 KiB, 2.78× vanilla**. At that
+size 10 books cross the 8 MiB raw ceiling — a third of a shulker — whereas 27
+maxed vanilla text books (7.9 MiB) don't quite reach it.
 
 **Compression is what actually decides it**, and measured with deflate:
 
 | content | raw | compressed | ratio |
 |---|---|---|---|
-| vanilla text, one repeated character | 300 KiB | 325 B | 945× |
-| vanilla text, random characters | 300 KiB | 235 KiB | 1.3× |
-| drawing, one dot per page | 356 KiB | 676 B | 540× |
-| drawing, 5 % of pixels | 356 KiB | 90 KiB | 4.0× |
-| drawing, 60 % of pixels | 356 KiB | 308 KiB | 1.2× |
-| drawing, solid fill | 356 KiB | 375 B | 973× |
-| drawing, pure noise | 356 KiB | 356 KiB | 1.0× |
-| random text + noise drawing | 656 KiB | 592 KiB | 1.1× |
+| vanilla text, one repeated character | 300 KiB | 326 B | 942× |
+| vanilla text, random characters | 300 KiB | 207 KiB | 1.4× |
+| drawing, one dot per page | 534 KiB | 851 B | 643× |
+| drawing, 5 % of pixels | 534 KiB | 113 KiB | 4.7× |
+| drawing, 60 % of pixels | 534 KiB | 460 KiB | 1.2× |
+| drawing, solid fill | 534 KiB | 557 B | 982× |
+| drawing, pure noise | 534 KiB | 535 KiB | 1.0× |
+| random text + noise drawing | 834 KiB | 742 KiB | 1.1× |
 
-Books needed to reach the 2 MiB compressed ceiling: ~6 450 with repeated
-vanilla text, ~8.7 with random vanilla text, ~5.7 with noise drawings, **~3.5
+Books needed to reach the 2 MiB compressed ceiling: ~6 430 with repeated
+vanilla text, ~9.9 with random vanilla text, ~3.8 with noise drawings, **~2.8
 with both**. So a bitmap is inherently closer to incompressible than prose is,
-and normal drawings (sparse strokes) sit at 4–20× compression — nowhere near
+and normal drawings (sparse strokes) sit at 5–20× compression — nowhere near
 the raw figure.
 
-**What bounds it:** every page is exactly 3 648 bytes, pages are capped at 100,
+**What bounds it:** every page is exactly 5 472 bytes, pages are capped at 100,
 and the decoder rejects anything that isn't exactly that. One book is at most
-356 KiB *provably* — no input can make it bigger, whether it came from this
+534 KiB *provably* — no input can make it bigger, whether it came from this
 mod, a command, or hand-edited NBT. Note also that a modified client can stuff
 junk into `custom_data` with or without this mod; the mod doesn't widen that
 surface, and validation protects against *rendering* garbage, not against
 *storing* it (a huge malformed blob still occupies disk before the decoder
 sees it).
 
-If 1.19× vanilla is too much, the levers are, in order: 1 bit per pixel and
-one color per book → 1 824 B/page ≈ 178 KiB (0.59× vanilla), or a smaller
-canvas (64×80 at 2 bits ≈ 128 KiB), or a lower page cap for drawings.
+If 1.78× vanilla is too much, the levers are, in order: fewer colors (back to
+2 bits per pixel → 3 648 B/page, 1.19× vanilla), 1 bit per pixel and one color
+per book → 1 824 B/page ≈ 178 KiB (0.59× vanilla), a smaller canvas, or a
+lower page cap for drawings. A sparse page format would help far more in
+practice and not at all in the worst case, which is why it isn't the first
+lever listed.
 
-**Validation on decode** (`PageDrawings.CODEC` → `PageBitmaps.isValid`) is the
+**Validation on decode** (`DrawingBlob.isValid` → `PageBitmaps.isValid`) is the
 single point of defense for data from disk, network, `/give`, hand-edited
-components or other mods: any page not exactly 3 648 bytes, or more than 100
-pages, rejects the *entire* drawing — it decodes as empty and renders blank.
+components or other mods: any page not exactly 5 472 bytes (or 3 648 for a
+version 1 blob), or more than 100 pages, rejects the *entire* drawing — it
+decodes as empty and renders blank.
 No partial parsing, no clamping, no crash. (The codec deliberately falls back
 to empty instead of returning a decode error, because a hard error inside an
 item-component codec can make the whole ItemStack unreadable and destroy the
@@ -259,7 +278,7 @@ Being a pure client mod:
 
 | Environment | Result |
 |---|---|
-| Server running the mod or the Paper plugin | Works in survival, no permissions needed. The client sends the drawing on the `drawinbooks:draw` channel; the server validates it and stores it on the book. |
+| Server running the mod or the Paper plugin | Works in survival, no permissions needed. The client sends the drawing in chunks on the `drawinbooks:draw2` channel; the server reassembles it, validates it and stores it on the book. Both sides must be 1.1.0 or newer. |
 | Singleplayer / LAN host | Written straight through to the integrated server's copy; saves with the world. Uninstall → ordinary book, data untouched; reinstall → drawing reappears. |
 | Vanilla server, creative | Sent via the creative set-slot packet, which vanilla accepts from creative players with full item data. |
 | **Vanilla server, survival** | **Cannot work.** No vanilla packet lets a survival player attach data to an item — the book packet carries text only. The drawing exists on your client until the next inventory sync overwrites it, and the mod says so once in the log. This is not a permissions problem: op changes nothing, because vanilla has no such channel at all. |
@@ -294,13 +313,29 @@ implementations of the same three lines of logic: receive a blob, validate it,
 write it to the book in the sender's hand. Neither renders anything or sends
 anything back — the client already knows what it drew.
 
-Nothing from a client is trusted. The payload codec caps the length before a
-byte is buffered, `DrawingBlob.isValid` rejects anything that isn't the exact
-fixed format, the target must be a book the sender is actually holding, and
-each player is rate limited to one accepted sync per 500 ms. The plugin
-duplicates the validation constants rather than sharing them, because it must
-compile against the Bukkit API alone — the cost is two places to change, which
-is why the format is deliberately trivial.
+**The drawing arrives in chunks**, and that is not an optimisation. Vanilla
+caps a serverbound custom payload at 32 767 bytes and *disconnects* the sender
+when a packet exceeds it — so a drawing past about six pages used to kick the
+player, and because the send happens on the book screen's save path, it took
+the unsent text with it. The blob is now cut into 16 KiB pieces (34 at most)
+that the server reassembles; nothing is applied until the final chunk lands, so
+a half-sent drawing can never overwrite a whole one.
+
+The channel is `drawinbooks:draw2` — the `2` exists so that a version mismatch
+is harmless rather than dangerous. An older server never announces this
+channel, so the client sees `canSend` return false and logs that the drawing
+cannot be stored, instead of sending something the other side would misread.
+
+Nothing from a client is trusted. The codec caps each chunk before a byte is
+buffered, chunks must arrive in order and every chunk but the last must be
+full, a transfer may not exceed the format's maximum, half-finished transfers
+are dropped after 10 s, `DrawingBlob.isValid` rejects anything that isn't the
+exact fixed format, the target must be a book the sender is actually holding,
+and each player is rate limited to one accepted sync per 500 ms. A player can
+hold at most one partial drawing in server memory. The plugin duplicates the
+validation constants rather than sharing them, because it must compile against
+the Bukkit API alone — the cost is two places to change, which is why the
+format is deliberately trivial.
 
 The client only sends when the server has announced the channel
 (`ClientPlayNetworking.canSend`), so a plain vanilla server is never sent
@@ -359,9 +394,9 @@ Everything below has been checked on a real client, and on a server, before
 
 - **Lecterns** don't show drawings. That screen never gets the `ItemStack`, so
   the stack would have to be handed down from the lectern block entity.
-- **Three ink colors**, not more. A fourth would need 3 bits per pixel and
-  would grow every book by half again — see
-  [Size](#size-and-the-chunk-ban-question).
+- **Five ink colors**, not more. A sixth still fits in three bits, but a
+  seventh would mean 4 bits per pixel and another third on top of every book —
+  see [Size](#size-and-the-chunk-ban-question).
 - **No compression.** Pages are stored flat, so the worst case is provable.
   Sparse pages and delta packets are the obvious next step and are deliberately
   not in 1.0.

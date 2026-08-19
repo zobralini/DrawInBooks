@@ -25,7 +25,7 @@ import net.minecraft.world.item.ItemStack;
  * shown in the action bar.
  *
  * <p>This exists because every design decision in this mod is argued in bytes -
- * "a drawn book is 1.19x the heaviest vanilla book" is only a useful claim if
+ * "a drawn book is 1.78x the heaviest vanilla book" is only a useful claim if
  * you can check it in game. It measures any item, not just books, which makes
  * it easy to compare a drawn book against a shulker box or a maxed-out written
  * book.
@@ -36,7 +36,7 @@ import net.minecraft.world.item.ItemStack;
  * the drawing, the text, and everything else on the item.
  *
  * <p>Off by default, and only measured when the held item changes or every
- * second - serializing a 356 KiB book every frame would be its own problem.
+ * second - serializing a 534 KiB book every frame would be its own problem.
  */
 public final class ItemSizeOverlay {
 	private static final int REFRESH_TICKS = 20;

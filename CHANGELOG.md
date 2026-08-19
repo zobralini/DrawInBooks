@@ -1,5 +1,48 @@
 # Changelog
 
+## 1.1.0
+
+**Update the server plugin too.** The wire protocol changed, and a 1.1.0 client
+will not save to a 1.0.0 server or plugin. The channel name was changed on
+purpose so the mismatch is detected and logged rather than half-working.
+
+### Fixed: writing several pages could kick you off the server and lose them
+
+Vanilla caps a single serverbound packet at 32 767 bytes and *disconnects* the
+sender when one is bigger. A drawing is up to 534 KiB, so past roughly six
+drawn pages the save kicked you — and because the drawing is sent from the
+book's save path, the text you had just typed went with it.
+
+The drawing is now sent as a run of 16 KiB chunks and reassembled server side.
+Nothing is applied until the final chunk arrives, so a half-sent drawing can
+never overwrite a finished one.
+
+Erasing a drawing completely now syncs as well; before, on a server, the empty
+result was never sent and the old drawing came back.
+
+### Green and yellow
+
+Five inks now: red, black, blue, green and yellow, all mixable on one page.
+
+This costs size. A pixel needs three bits instead of two, so a page goes from
+3 648 to 5 472 bytes and a fully drawn book from 356 KiB to 534 KiB — 1.78×
+the heaviest possible vanilla text book, up from 1.19×. The
+[README](README.md#size-and-the-chunk-ban-question) has the re-measured
+compression figures.
+
+Books drawn with the old format are read and upgraded automatically, and keep
+their colors. Nothing needs converting by hand.
+
+### Copy and paste
+
+`ⓒ` and `ⓟ` on the toolbar, or **Ctrl-C** and **Ctrl-V**, copy the whole
+drawing on the page you are looking at and paste it onto another — in the same
+book or a different one. The clipboard holds one page and lives only in memory.
+
+Pasting replaces the target page and is undoable like any other edit. `ⓟ` dims
+when there is nothing to paste. The shortcuts are only intercepted in draw
+mode, so vanilla's text copy and paste still work while typing.
+
 ## 1.0.0
 
 First stable release. No behaviour changes since 0.3.1 — this is the same mod,

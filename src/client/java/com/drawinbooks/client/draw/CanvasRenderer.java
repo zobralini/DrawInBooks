@@ -66,7 +66,7 @@ public final class CanvasRenderer {
 			this.cachedBlank = page == null || PageBitmaps.isBlank(page);
 
 			// A blank page is the common case for a book being written in, and
-			// checking 3 648 bytes is far cheaper than decoding every pixel.
+			// checking 5 472 bytes is far cheaper than decoding every pixel.
 			if (this.cachedBlank) {
 				return;
 			}

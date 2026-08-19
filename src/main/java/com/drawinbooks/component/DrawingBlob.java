@@ -8,7 +8,7 @@ import java.util.List;
  * array.
  *
  * <pre>
- *   [0]      format version (currently 1)
+ *   [0]      format version (currently 2)
  *   [1]      pen color index (0..COLOR_COUNT-1), only a "last used" hint
  *   [2..]    N pages, each exactly PageBitmaps.BYTES_PER_PAGE bytes
  * </pre>
@@ -22,11 +22,19 @@ import java.util.List;
  *
  * <p>Validation is total: a blob is valid only if its length is exactly
  * {@code 2 + N * BYTES_PER_PAGE} for some {@code 0 < N <= MAX_PAGES}, and the
- * version byte matches. Anything else is rejected whole - never partially
- * parsed, never clamped.
+ * version byte matches a version this build understands. Anything else is
+ * rejected whole - never partially parsed, never clamped.
+ *
+ * <p><b>Version 1</b> (2 bits per pixel, three inks) is still read, so books
+ * drawn before green and yellow existed keep their drawings. It is never
+ * written: decoding upgrades those pages in place, and the next save stores
+ * version 2.
  */
 public final class DrawingBlob {
-	public static final byte VERSION = 1;
+	public static final byte VERSION = 2;
+
+	/** The 2-bits-per-pixel layout this mod shipped with. Read-only now. */
+	public static final byte VERSION_LEGACY = 1;
 
 	/** version byte + color byte */
 	public static final int HEADER_BYTES = 2;
@@ -60,21 +68,25 @@ public final class DrawingBlob {
 	}
 
 	/**
-	 * @return the decoded drawing, or null if the blob is malformed in any way
+	 * @return the decoded drawing, or null if the blob is malformed in any way.
+	 *         Version 1 blobs come back already upgraded to the current pixel
+	 *         layout, so callers never see more than one format
 	 */
 	public static Decoded decode(byte[] blob) {
 		if (!isValid(blob)) {
 			return null;
 		}
 
-		int pageCount = pageCount(blob);
+		boolean legacy = blob[0] == VERSION_LEGACY;
+		int pageBytes = legacy ? PageBitmaps.LEGACY_BYTES_PER_PAGE : PageBitmaps.BYTES_PER_PAGE;
+		int pageCount = (blob.length - HEADER_BYTES) / pageBytes;
+
 		List<byte[]> pages = new ArrayList<>(pageCount);
 
 		for (int i = 0; i < pageCount; i++) {
-			byte[] page = new byte[PageBitmaps.BYTES_PER_PAGE];
-			System.arraycopy(blob, HEADER_BYTES + i * PageBitmaps.BYTES_PER_PAGE,
-					page, 0, PageBitmaps.BYTES_PER_PAGE);
-			pages.add(page);
+			byte[] page = new byte[pageBytes];
+			System.arraycopy(blob, HEADER_BYTES + i * pageBytes, page, 0, pageBytes);
+			pages.add(legacy ? PageBitmaps.upgradeLegacyPage(page) : page);
 		}
 
 		return new Decoded(pages, blob[1]);
@@ -86,32 +98,42 @@ public final class DrawingBlob {
 	 * fails here is never stored and never rendered.
 	 */
 	public static boolean isValid(byte[] blob) {
-		if (blob == null || blob.length < HEADER_BYTES + PageBitmaps.BYTES_PER_PAGE) {
+		if (blob == null || blob.length <= HEADER_BYTES || blob.length > MAX_BYTES) {
 			return false;
 		}
 
-		if (blob.length > MAX_BYTES || blob[0] != VERSION) {
+		int pageBytes = switch (blob[0]) {
+			case VERSION -> PageBitmaps.BYTES_PER_PAGE;
+			case VERSION_LEGACY -> PageBitmaps.LEGACY_BYTES_PER_PAGE;
+			default -> 0;
+		};
+
+		if (pageBytes == 0) {
 			return false;
 		}
 
 		int body = blob.length - HEADER_BYTES;
 
-		if (body % PageBitmaps.BYTES_PER_PAGE != 0) {
-			return false;
-		}
-
-		int pages = body / PageBitmaps.BYTES_PER_PAGE;
-
-		if (pages > PageBitmaps.MAX_PAGES) {
+		if (body % pageBytes != 0 || body / pageBytes > PageBitmaps.MAX_PAGES) {
 			return false;
 		}
 
 		int color = blob[1];
 
-		return color >= 0 && color < PageBitmaps.COLOR_COUNT;
+		// A version 1 blob can only name one of the three inks it knew about.
+		int colorCount = blob[0] == VERSION_LEGACY
+				? PageBitmaps.LEGACY_COLOR_COUNT
+				: PageBitmaps.COLOR_COUNT;
+
+		return color >= 0 && color < colorCount;
 	}
 
+	/** Only meaningful for a blob that {@link #isValid} has accepted. */
 	public static int pageCount(byte[] blob) {
-		return (blob.length - HEADER_BYTES) / PageBitmaps.BYTES_PER_PAGE;
+		int pageBytes = blob[0] == VERSION_LEGACY
+				? PageBitmaps.LEGACY_BYTES_PER_PAGE
+				: PageBitmaps.BYTES_PER_PAGE;
+
+		return (blob.length - HEADER_BYTES) / pageBytes;
 	}
 }
