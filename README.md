@@ -37,8 +37,7 @@ Requires **Java 25** (JDK 25). From the project root:
 ## How it works
 
 **UX** — Opening a book & quill shows one new UI element: a strip of square
-buttons hugging the left edge of the book, labelled with glyphs from
-Minecraft's own font (no texture asset). `✎` switches to drawing and `A`
+buttons hugging the left edge of the book. `✎` switches to drawing and `A`
 switches back to typing; while drawing, a pen `✎` and an eraser `❌` appear
 below it, each showing its current brush size, with the selected tool in
 yellow. Clicking a tool selects it; held modifiers then act on it:
@@ -70,6 +69,15 @@ the clipboard works as a stamp — a border, a signature, a template. Shift-clic
 edit. `ⓟ` dims when there is nothing to paste. Ctrl-C and Ctrl-V are only
 intercepted in draw mode, so vanilla's own text copy and paste keep working
 while typing.
+
+The mode toggle is the one button with a background — a 20×40 sheet at
+`assets/drawinbooks/textures/gui/draw_button.png`, normal frame on top and
+hovered underneath. Everything below it is frameless, so the strip reads as one
+button with a row of icons hanging off it. The symbols themselves are glyphs
+from Minecraft's own font rather than part of the texture, because almost none
+of them are static: the toggle alternates between two, the swatch is tinted
+per ink, the tools carry a brush size that changes under the cursor, and `ⓟ`
+dims when the clipboard is empty.
 
 Brush size shows as a superscript on the tool's glyph (`✎¹`, `❌³`). While the
 cursor is over a tool and a modifier is held, that superscript is replaced by

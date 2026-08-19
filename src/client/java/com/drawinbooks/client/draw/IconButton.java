@@ -5,15 +5,29 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 /**
- * A frameless button: just its glyph, drawn with a text shadow, with a faint
- * highlight while hovered. Used for the drawing tools, so the toolbar reads as
- * a row of icons rather than a stack of vanilla button frames.
+ * A button that is just its glyph, drawn with a text shadow.
  *
- * <p>The label is whatever {@code setMessage} was last given, including its
- * style - that is how the color swatch renders in its own color.
+ * <p>Two looks, from the same class:
+ * <ul>
+ *   <li><b>Frameless</b> (no texture) - only the glyph, with a faint highlight
+ *       while hovered. Used for the tools, so the strip under the book reads as
+ *       a row of icons rather than a stack of vanilla button frames.</li>
+ *   <li><b>Textured</b> - a background blitted from a two-frame sheet, normal
+ *       on top and hovered underneath. Used for the mode toggle, which is the
+ *       one control that is always on screen and so wants to look like a
+ *       button.</li>
+ * </ul>
+ *
+ * <p>The glyph is drawn on top either way, and is whatever {@code setMessage}
+ * was last given, including its style - that is how the color swatch renders in
+ * its own color, and why nothing is baked into the texture: the toggle alone
+ * alternates between two glyphs, and the tools carry a brush size that changes
+ * under the cursor.
  */
 public final class IconButton extends AbstractWidget {
 	private static final int HOVER_TINT = 0x33FFFFFF;
@@ -26,14 +40,36 @@ public final class IconButton extends AbstractWidget {
 
 	private final OnPress action;
 
+	/** Background sheet, or null for a frameless button. */
+	private final Identifier texture;
+
+	/** Height of one frame in that sheet; the sheet holds two, stacked. */
+	private final int frameHeight;
+
 	public IconButton(int x, int y, int width, int height, Component message, OnPress action) {
+		this(x, y, width, height, message, action, null);
+	}
+
+	/**
+	 * @param texture a sheet exactly {@code width} wide and {@code 2 * height}
+	 *                tall: the normal frame on top, the hovered one below
+	 */
+	public IconButton(int x, int y, int width, int height, Component message, OnPress action, Identifier texture) {
 		super(x, y, width, height, message);
 		this.action = action;
+		this.texture = texture;
+		this.frameHeight = height;
 	}
 
 	@Override
 	protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-		if (this.isHovered) {
+		if (this.texture != null) {
+			graphics.blit(RenderPipelines.GUI_TEXTURED, this.texture,
+					getX(), getY(),
+					0.0F, this.isHovered ? this.frameHeight : 0.0F,
+					this.width, this.height,
+					this.width, this.frameHeight * 2);
+		} else if (this.isHovered) {
 			graphics.fill(getX(), getY(), getX() + this.width, getY() + this.height, HOVER_TINT);
 		}
 
@@ -44,7 +80,7 @@ public final class IconButton extends AbstractWidget {
 		int textY = getY() + (this.height - font.lineHeight) / 2;
 
 		// The label's own style color wins over this default, which is what
-		// lets the color swatch draw itself red / black / blue.
+		// lets the color swatch draw itself red / black / blue / green / yellow.
 		graphics.text(font, label, textX, textY, LABEL_COLOR, true);
 	}
 

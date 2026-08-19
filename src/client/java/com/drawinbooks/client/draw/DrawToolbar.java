@@ -3,6 +3,7 @@ package com.drawinbooks.client.draw;
 import java.util.List;
 import java.util.function.IntSupplier;
 
+import com.drawinbooks.DrawInBooks;
 import com.drawinbooks.client.config.DrawConfig;
 import com.drawinbooks.client.config.DrawConfigScreen;
 
@@ -13,10 +14,10 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenMouseEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -34,6 +35,15 @@ public final class DrawToolbar {
 
 	/** Frameless tool icons - shorter, since they carry no button frame. */
 	private static final int ICON = 16;
+
+	/**
+	 * Background for the mode toggle: a 20x40 sheet holding the normal frame
+	 * and, under it, the hovered one. Only this button is textured - the tools
+	 * below it stay frameless, so the strip reads as one button with a row of
+	 * icons hanging off it rather than as seven buttons.
+	 */
+	private static final Identifier MODE_TEXTURE =
+			Identifier.fromNamespaceAndPath(DrawInBooks.MOD_ID, "textures/gui/draw_button.png");
 
 	public static final int WIDTH = TOGGLE;
 
@@ -72,7 +82,7 @@ public final class DrawToolbar {
 	private final DrawingSession session;
 	private final IntSupplier currentPage;
 
-	private Button modeButton;
+	private IconButton modeButton;
 	private IconButton penButton;
 	private IconButton eraserButton;
 	private IconButton colorButton;
@@ -115,12 +125,13 @@ public final class DrawToolbar {
 			return;
 		}
 
-		this.modeButton = Button.builder(
+		this.modeButton = new IconButton(x, y, TOGGLE, TOGGLE,
 				Component.literal(GLYPH_DRAW),
-				button -> {
+				() -> {
 					this.session.toggleMode();
 					update();
-				}).bounds(x, y, TOGGLE, TOGGLE).build();
+				},
+				MODE_TEXTURE);
 
 		int iconY = y + TOGGLE + 2;
 
