@@ -24,6 +24,12 @@ result was never sent and the old drawing came back.
 
 Five inks now: red, black, blue, green and yellow, all mixable on one page.
 
+Red was retuned at the same time: the old shade read as maroon rather than red.
+Yellow is as saturated as it can be — the book page is #FFFAEE, very nearly
+white, and any yellow still recognisable as yellow sits near 2:1 contrast
+there. Darkening it until it contrasts is exactly what makes a yellow look
+muddy, so it isn't darkened.
+
 This costs size. A pixel needs three bits instead of two, so a page goes from
 3 648 to 5 472 bytes and a fully drawn book from 356 KiB to 534 KiB — 1.78×
 the heaviest possible vanilla text book, up from 1.19×. The

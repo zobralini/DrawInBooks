@@ -31,7 +31,16 @@ import net.minecraft.resources.Identifier;
  */
 public final class IconButton extends AbstractWidget {
 	private static final int HOVER_TINT = 0x33FFFFFF;
+
+	/** White with a shadow, which is how a glyph reads over the dark GUI. */
 	private static final int LABEL_COLOR = 0xFFFFFFFF;
+
+	/**
+	 * Over the parchment background the same white glyph disappears, so a
+	 * textured button draws it in a dark brown instead - and without a shadow,
+	 * which on dark-on-light text only reads as a smudge.
+	 */
+	private static final int TEXTURED_LABEL_COLOR = 0xFF2B2118;
 
 	@FunctionalInterface
 	public interface OnPress {
@@ -79,9 +88,12 @@ public final class IconButton extends AbstractWidget {
 		int textX = getX() + (this.width - font.width(label)) / 2;
 		int textY = getY() + (this.height - font.lineHeight) / 2;
 
+		boolean textured = this.texture != null;
+
 		// The label's own style color wins over this default, which is what
 		// lets the color swatch draw itself red / black / blue / green / yellow.
-		graphics.text(font, label, textX, textY, LABEL_COLOR, true);
+		graphics.text(font, label, textX, textY,
+				textured ? TEXTURED_LABEL_COLOR : LABEL_COLOR, !textured);
 	}
 
 	@Override
