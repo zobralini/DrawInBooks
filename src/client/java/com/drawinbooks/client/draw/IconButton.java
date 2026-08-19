@@ -72,7 +72,9 @@ public final class IconButton extends AbstractWidget {
 
 	@Override
 	protected void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
-		if (this.texture != null) {
+		boolean textured = this.texture != null;
+
+		if (textured) {
 			graphics.blit(RenderPipelines.GUI_TEXTURED, this.texture,
 					getX(), getY(),
 					0.0F, this.isHovered ? this.frameHeight : 0.0F,
@@ -86,9 +88,13 @@ public final class IconButton extends AbstractWidget {
 		Component label = getMessage();
 
 		int textX = getX() + (this.width - font.width(label)) / 2;
-		int textY = getY() + (this.height - font.lineHeight) / 2;
 
-		boolean textured = this.texture != null;
+		// The button is 20 tall and a line is 9, so 11 pixels of slack cannot
+		// be split evenly and one has to go above or below. Inside a frame the
+		// glyph looks high when it goes below, so textured buttons round the
+		// other way. The frameless icons have no frame to sit inside and are
+		// left where they are.
+		int textY = getY() + (this.height - font.lineHeight + (textured ? 1 : 0)) / 2;
 
 		// The label's own style color wins over this default, which is what
 		// lets the color swatch draw itself red / black / blue / green / yellow.
