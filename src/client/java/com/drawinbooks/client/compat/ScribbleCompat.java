@@ -13,6 +13,7 @@ import com.drawinbooks.client.draw.DrawToolbar;
 import com.drawinbooks.client.draw.DrawingPersistence;
 import com.drawinbooks.client.draw.DrawingSession;
 import com.drawinbooks.client.draw.InkColor;
+import com.drawinbooks.client.draw.ServerSupport;
 import com.drawinbooks.component.BookDrawingStorage;
 import com.drawinbooks.component.DrawingBlob;
 
@@ -148,6 +149,10 @@ public final class ScribbleCompat {
 
 		List<AbstractWidget> widgets = Screens.getWidgets(screen);
 
+		// Read-only where a drawing could not be saved anyway: the canvas still
+		// shows what is on the book, it just takes no input.
+		boolean drawable = editable && ServerSupport.editingAllowed();
+
 		// One canvas per visible page - Scribble can show two at once.
 		for (int i = 0; i < pagesShown; i++) {
 			int pageOffset = i;
@@ -157,7 +162,7 @@ public final class ScribbleCompat {
 					originY + PAGE_OFFSET_Y + BookLayout.CANVAS_NUDGE_Y,
 					session,
 					() -> readInt(currentPageField, screen, 0) + pageOffset,
-					editable));
+					drawable));
 		}
 
 		if (!editable) {

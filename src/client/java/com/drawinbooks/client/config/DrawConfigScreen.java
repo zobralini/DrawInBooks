@@ -48,6 +48,10 @@ public final class DrawConfigScreen extends Screen {
 				() -> this.config.showEditingTools,
 				value -> this.config.showEditingTools = value);
 
+		addToggle(x, top, "Hide tools where they can't save",
+				() -> this.config.hideToolsWithoutServerSupport,
+				value -> this.config.hideToolsWithoutServerSupport = value);
+
 		addToggle(x, top, "Show drawings while writing",
 				() -> this.config.showDrawingsInTextMode,
 				value -> this.config.showDrawingsInTextMode = value);

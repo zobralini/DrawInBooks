@@ -294,7 +294,7 @@ Being a pure client mod:
 | Server running the mod or the Paper plugin | Works in survival, no permissions needed. The client sends the drawing in chunks on the `drawinbooks:draw2` channel; the server reassembles it, validates it and stores it on the book. Both sides must be 1.1.0 or newer. |
 | Singleplayer / LAN host | Written straight through to the integrated server's copy; saves with the world. Uninstall → ordinary book, data untouched; reinstall → drawing reappears. |
 | Vanilla server, creative | Sent via the creative set-slot packet, which vanilla accepts from creative players with full item data. |
-| **Vanilla server, survival** | **Cannot work.** No vanilla packet lets a survival player attach data to an item — the book packet carries text only. The drawing exists on your client until the next inventory sync overwrites it, and the mod says so once in the log. This is not a permissions problem: op changes nothing, because vanilla has no such channel at all. |
+| **Vanilla server, survival** | **Cannot work**, so the tools are not offered. No vanilla packet lets a survival player attach data to an item — the book packet carries text only. This is not a permissions problem: op changes nothing, because vanilla has no such channel at all. See below. |
 
 Trading, chests and shulkers follow from the data being on the item: two
 players who both have the mod see the same drawing on the same book.
@@ -349,6 +349,23 @@ hold at most one partial drawing in server memory. The plugin duplicates the
 validation constants rather than sharing them, because it must compile against
 the Bukkit API alone — the cost is two places to change, which is why the
 format is deliberately trivial.
+
+**The tools hide themselves where they would not work.** A server announces
+every plugin-message channel it listens on when you join, so
+`ClientPlayNetworking.canSend` answers "does the other side have this mod or
+its plugin" before anything is sent — and because the channel name carries the
+protocol version, it also answers "a compatible one". Drawing is therefore
+offered in exactly three places: singleplayer or hosting a LAN world, a server
+with the mod or the plugin, and creative on any server (where the creative
+set-slot packet carries the data instead). Anywhere else the toolbar is absent
+and the canvas is read-only — existing drawings still show, they just cannot be
+edited.
+
+Silence would be indistinguishable from a broken mod, so the reason is printed
+once per server, in chat rather than the action bar: the HUD isn't drawn while
+a screen is open, and this is discovered exactly when a book screen opens.
+Turning **Hide tools where they can't save** off in the settings restores the
+old behaviour, for anyone whose server keeps item data some other way.
 
 The client only sends when the server has announced the channel
 (`ClientPlayNetworking.canSend`), so a plain vanilla server is never sent

@@ -39,6 +39,22 @@ compression figures.
 Books drawn with the old format are read and upgraded automatically, and keep
 their colors. Nothing needs converting by hand.
 
+### Drawing hides itself where it cannot be saved
+
+A server announces the plugin-message channels it listens on when you join, so
+the mod can tell whether the other side has it before anything is sent. Where
+it doesn't, the toolbar no longer appears and the canvas is read-only —
+existing drawings still show, they just cannot be edited. No more spending ten
+minutes on a drawing that was never going to survive the next inventory sync.
+
+Drawing stays available in singleplayer, when hosting a LAN world, on a server
+with the mod or the plugin, and in creative on any server — creative can attach
+item data through a vanilla packet, so it genuinely works there.
+
+The reason is printed once per server in chat, because a toolbar that is simply
+missing looks like a broken mod. New setting **Hide tools where they can't
+save**, on by default; turn it off to draw anyway.
+
 ### Copy and paste
 
 `ⓒ` and `ⓟ` on the toolbar, or **Ctrl-C** and **Ctrl-V**, copy the whole

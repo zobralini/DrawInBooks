@@ -125,6 +125,13 @@ public final class DrawToolbar {
 			return;
 		}
 
+		// Nowhere to save it, so nothing to offer. Said out loud once, because
+		// a toolbar that is simply absent looks like a broken mod.
+		if (!ServerSupport.editingAllowed()) {
+			ServerSupport.explainOnce();
+			return;
+		}
+
 		this.modeButton = new IconButton(x, y, TOGGLE, TOGGLE,
 				Component.literal(GLYPH_DRAW),
 				() -> {

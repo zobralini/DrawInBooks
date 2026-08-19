@@ -54,6 +54,15 @@ public final class DrawConfig {
 	public boolean debugItemSize = false;
 
 	/**
+	 * Hide the drawing tools on a server that cannot store drawings - one with
+	 * neither this mod nor its plugin, unless you are in creative. On by
+	 * default: a drawing made there is wiped by the next inventory sync, and
+	 * finding that out after the fact is worse than not being offered the
+	 * tools. Turn it off to draw anyway.
+	 */
+	public boolean hideToolsWithoutServerSupport = true;
+
+	/**
 	 * Keep drawings visible while writing text. Off means the page shows only
 	 * what you are currently working on, which some people find less busy.
 	 */
@@ -100,6 +109,8 @@ public final class DrawConfig {
 		config.showDrawingsInTextMode = bool(properties, "showDrawingsInTextMode", config.showDrawingsInTextMode);
 		config.toolbarOnRight = bool(properties, "toolbarOnRight", config.toolbarOnRight);
 		config.debugItemSize = bool(properties, "debugItemSize", config.debugItemSize);
+		config.hideToolsWithoutServerSupport = bool(
+				properties, "hideToolsWithoutServerSupport", config.hideToolsWithoutServerSupport);
 
 		// Clamped on read: a hand-edited file can only ever produce a usable
 		// brush, never a broken one.
@@ -118,6 +129,8 @@ public final class DrawConfig {
 		properties.setProperty("showDrawingsInTextMode", Boolean.toString(this.showDrawingsInTextMode));
 		properties.setProperty("toolbarOnRight", Boolean.toString(this.toolbarOnRight));
 		properties.setProperty("debugItemSize", Boolean.toString(this.debugItemSize));
+		properties.setProperty("hideToolsWithoutServerSupport",
+				Boolean.toString(this.hideToolsWithoutServerSupport));
 		properties.setProperty("penSize", Integer.toString(this.penSize));
 		properties.setProperty("eraserSize", Integer.toString(this.eraserSize));
 		properties.setProperty("defaultColorIndex", Integer.toString(this.defaultColorIndex));

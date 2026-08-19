@@ -9,6 +9,7 @@ import com.drawinbooks.client.draw.DrawToolbar;
 import com.drawinbooks.client.draw.DrawingPersistence;
 import com.drawinbooks.client.draw.DrawingSession;
 import com.drawinbooks.client.draw.InkColor;
+import com.drawinbooks.client.draw.ServerSupport;
 import com.drawinbooks.component.BookDrawingStorage;
 import com.drawinbooks.component.DrawingBlob;
 import com.drawinbooks.component.PageBitmaps;
@@ -99,11 +100,15 @@ public abstract class BookEditScreenMixin extends Screen {
 		DrawingSession session = this.drawinbooks$session;
 		int bookLeft = BookLayout.bookLeft(this.width);
 
+		// Where a drawing could not be saved, the canvas is read-only: it shows
+		// what is already on the book but takes no input, exactly like the
+		// screen for a signed book.
 		addRenderableWidget(new DrawCanvasWidget(
 				bookLeft + BookLayout.CANVAS_X,
 				BookLayout.CANVAS_Y,
 				session,
-				() -> this.currentPage));
+				() -> this.currentPage,
+				ServerSupport.editingAllowed()));
 
 		int pageLeft = bookLeft + BookLayout.PAGE_TEXT_X;
 
