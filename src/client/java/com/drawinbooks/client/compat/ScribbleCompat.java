@@ -9,6 +9,7 @@ import com.drawinbooks.DrawInBooks;
 import com.drawinbooks.client.draw.BookLayout;
 import com.drawinbooks.client.draw.BookScreenScale;
 import com.drawinbooks.client.draw.BookSessions;
+import com.drawinbooks.client.draw.BookSource;
 import com.drawinbooks.client.draw.DrawCanvasWidget;
 import com.drawinbooks.client.draw.DrawToolbar;
 import com.drawinbooks.client.draw.DrawingPersistence;
@@ -127,7 +128,13 @@ public final class ScribbleCompat {
 		BookScreenScale.enlarge(screen);
 
 		InteractionHand hand = findBookHand(minecraft, editable);
-		ItemStack book = minecraft.player == null ? ItemStack.EMPTY : minecraft.player.getItemInHand(hand);
+
+		// Reading goes through BookSource, which also covers a lectern - where
+		// the player's hands are usually empty and the book is on the menu.
+		// Editing is always a book in hand, and the hand matters for saving.
+		ItemStack book = editable
+				? (minecraft.player == null ? ItemStack.EMPTY : minecraft.player.getItemInHand(hand))
+				: BookSource.readingBook(screen);
 
 		if (!BookDrawingStorage.isBook(book)) {
 			return;
@@ -147,13 +154,16 @@ public final class ScribbleCompat {
 				? -1
 				: minecraft.player.getInventory().getSelectedSlot();
 
-		DrawingSession kept = BookSessions.restore(hand, slot, book);
+		// Only an editing screen has a session worth keeping; a reader must
+		// never adopt one, or a lectern could show a drawing from the book in
+		// the player's own hand.
+		DrawingSession kept = editable ? BookSessions.restore(hand, slot, book) : null;
 		DrawingSession fresh = kept != null ? null
 				: stored == null
 						? DrawingSession.fromPages(null, null)
 						: DrawingSession.fromPages(stored.pages(), InkColor.byIndex(stored.colorIndex()));
 
-		if (fresh != null) {
+		if (fresh != null && editable) {
 			BookSessions.remember(fresh, hand, slot, book);
 		}
 

@@ -17,6 +17,10 @@ hard one — its menu does carry the item.
 A lectern's book can be swapped while the screen stays open, so the book is
 re-checked each frame and re-decoded only when it is actually a different one.
 
+This works with Scribble installed too: the lectern is matched by the screen's
+menu rather than by the vanilla screen class, so a replaced screen still counts
+as a lectern.
+
 ### Middle click picks the color
 
 Middle-click any ink on the page and the pen switches to it, instead of cycling

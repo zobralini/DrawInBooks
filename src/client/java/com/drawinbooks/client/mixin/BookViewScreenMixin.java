@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.drawinbooks.client.draw.BookLayout;
 import com.drawinbooks.client.draw.BookScreenScale;
+import com.drawinbooks.client.draw.BookSource;
 import com.drawinbooks.client.draw.CanvasRenderer;
 import com.drawinbooks.component.BookDrawingStorage;
 import com.drawinbooks.component.DrawingBlob;
@@ -12,11 +13,8 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.BookViewScreen;
-import net.minecraft.client.gui.screens.inventory.LecternScreen;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -35,11 +33,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * while editing. A widget would be drawn before the screen's own text.
  *
  * <p>The screen carries only the book's text ({@code BookAccess}), never the
- * ItemStack it came from, so the stack has to be found some other way. For a
- * book in the hand that means looking at what the player is holding. For a
- * lectern it means the menu: {@link LecternScreen} extends this screen and its
- * {@code LecternMenu} does have the stack, which is the whole reason lecterns
- * can be supported at all.
+ * ItemStack it came from, so finding the stack is its own problem - see
+ * {@link BookSource}.
  */
 @Mixin(BookViewScreen.class)
 public abstract class BookViewScreenMixin extends Screen {
@@ -99,7 +94,7 @@ public abstract class BookViewScreenMixin extends Screen {
 	 */
 	@Unique
 	private void drawinbooks$refresh() {
-		ItemStack book = drawinbooks$book();
+		ItemStack book = BookSource.readingBook((Screen) (Object) this);
 
 		if (book == this.drawinbooks$decodedFrom) {
 			return;
@@ -108,33 +103,9 @@ public abstract class BookViewScreenMixin extends Screen {
 		this.drawinbooks$decodedFrom = book;
 		this.drawinbooks$revision++;
 
-		DrawingBlob.Decoded stored = book == null
-				? null
-				: BookDrawingStorage.read(book).orElse(null);
+		DrawingBlob.Decoded stored = BookDrawingStorage.read(book).orElse(null);
 
 		this.drawinbooks$pages = stored == null ? null : stored.pages();
 	}
 
-	/** The book this screen is showing, or null if it cannot be found. */
-	@Unique
-	private ItemStack drawinbooks$book() {
-		if ((Object) this instanceof LecternScreen lectern) {
-			ItemStack book = lectern.getMenu().getBook();
-			return BookDrawingStorage.isBook(book) ? book : null;
-		}
-
-		LocalPlayer player = this.minecraft == null ? null : this.minecraft.player;
-
-		if (player == null) {
-			return null;
-		}
-
-		ItemStack stack = player.getMainHandItem();
-
-		if (!stack.is(Items.WRITTEN_BOOK)) {
-			stack = player.getOffhandItem();
-		}
-
-		return stack.is(Items.WRITTEN_BOOK) ? stack : null;
-	}
 }

@@ -249,7 +249,10 @@ book on chunk load.)
 **Lecterns** — `LecternScreen` extends the reading screen, so it gets the same
 drawing layer. The difference is where the book comes from: a held book is
 found on the player, while a lectern's is on its `LecternMenu`, which does
-carry the `ItemStack`. Because a lectern's book can be swapped while the screen
+carry the `ItemStack`. That is matched through the `MenuAccess` interface
+rather than the vanilla screen class, so it survives another mod replacing the
+lectern screen — which Scribble does, and which is why lecterns worked in a
+development client and not in a real one. Because a lectern's book can be swapped while the screen
 stays open, the stack is re-checked each frame and re-decoded only when it is
 genuinely a different one — a reference comparison per frame, not a parse.
 
