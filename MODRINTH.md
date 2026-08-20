@@ -24,10 +24,10 @@
 
 | Field | Value |
 |---|---|
-| File | `build/libs/drawinbooks-1.1.0.jar` (not `-sources`) |
-| Additional file | `paper/build/libs/drawinbooks-paper-1.1.0.jar` |
-| Version number | `1.1.0` |
-| Version name | `1.1.0` |
+| File | `build/libs/drawinbooks-1.2.0.jar` (not `-sources`) |
+| Additional file | `paper/build/libs/drawinbooks-paper-1.2.0.jar` |
+| Version number | `1.2.0` |
+| Version name | `1.2.0` |
 | Release channel | **Release** |
 | Loaders | Fabric |
 | Game versions | 26.2 |
@@ -36,7 +36,7 @@
 Release channel, not beta: every path in the mod has now been used in a real
 game — singleplayer, a Fabric server, a Paper server, and alongside Scribble.
 
-Version changelog — paste the `1.1.0` section from `CHANGELOG.md`.
+Version changelog — paste the `1.2.0` section from `CHANGELOG.md`.
 
 ---
 
@@ -127,8 +127,8 @@ on Bukkit, Spigot, Paper and the Paper forks alike. Install either one and
 drawing works in survival for everyone, with no permissions to hand out.
 
 **Update both together.** 1.1.0 changed how the drawing reaches the server, so
-a 1.1.0 client will not save to a 1.0.0 server or plugin. It says so in the log
-rather than failing quietly, but the fix is to update both sides.
+a 1.1.0-or-newer client will not save to a 1.0.x server or plugin. It says so in
+the log rather than failing quietly, but the fix is to update both sides.
 
 Without one of them, on a plain vanilla server in survival, a drawing stays on
 your client and disappears on the next inventory sync. That's not something a

@@ -99,7 +99,7 @@ public final class BookScreenScale {
 	 * screen counts as one, so opening it from a book doesn't resize the world
 	 * behind it and then resize it again on the way back.
 	 */
-	private static boolean isBookScreen(Screen screen) {
+	public static boolean isBookScreen(Screen screen) {
 		return screen instanceof BookEditScreen
 				|| screen instanceof BookViewScreen
 				|| screen instanceof DrawConfigScreen

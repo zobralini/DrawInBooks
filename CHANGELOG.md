@@ -1,5 +1,39 @@
 # Changelog
 
+## 1.2.0
+
+Two bug fixes, both of which could lose work. No format or protocol change, so
+a 1.1.0 server or plugin still works with this — but the two are still worth
+keeping in step.
+
+### Fixed: alt-tab and fullscreen threw away the drawing in progress
+
+Both rebuild the game's screens, and the working drawing lived on the screen
+object, so anything not yet saved went with it. Press F11 mid-drawing and the
+page reverted to whatever was last written to the book.
+
+The session now lives outside any screen and a rebuilt screen picks it back up.
+It is handed back only for the same hand, the same slot, and a book still
+carrying exactly the drawing that session started from — giving it to the wrong
+book would be far worse than losing it — and it is dropped a few seconds after
+the last book screen closes.
+
+### Fixed: pages with only a drawing on them vanished from the page count
+
+A book could say "1 of 12" while pages 13 and 14 held drawings: saved, present,
+but unreachable.
+
+In 26.2 `BookEditScreen` saves text *only* from Done and Sign — it overrides
+neither `onClose` nor `removed` — so closing with Escape discards the text.
+Drawing-only pages are kept alive by reserving a space character on them, and
+that reservation rode along with vanilla's save, which in that case never
+happened. The drawing was stored; the pages holding it were not.
+
+Now, when the drawing reaches past the last text page and the book is closed
+without saving, vanilla's own save is invoked, because it is the only thing
+that can create those pages. Only in that case: closing a book without saving
+still discards text everywhere else, exactly like vanilla.
+
 ## 1.1.0
 
 **Update the server plugin too.** The wire protocol changed, and a 1.1.0 client

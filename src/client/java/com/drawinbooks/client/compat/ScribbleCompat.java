@@ -8,6 +8,7 @@ import java.util.List;
 import com.drawinbooks.DrawInBooks;
 import com.drawinbooks.client.draw.BookLayout;
 import com.drawinbooks.client.draw.BookScreenScale;
+import com.drawinbooks.client.draw.BookSessions;
 import com.drawinbooks.client.draw.DrawCanvasWidget;
 import com.drawinbooks.client.draw.DrawToolbar;
 import com.drawinbooks.client.draw.DrawingPersistence;
@@ -139,9 +140,25 @@ public final class ScribbleCompat {
 			return;
 		}
 
-		DrawingSession session = stored == null
-				? DrawingSession.fromPages(null, null)
-				: DrawingSession.fromPages(stored.pages(), InkColor.byIndex(stored.colorIndex()));
+		// Scribble's screen is rebuilt on alt-tab and fullscreen just like the
+		// vanilla one, and a rebuilt screen is a new object, so the working
+		// session is picked back up rather than re-read from the item.
+		int slot = hand == InteractionHand.OFF_HAND || minecraft.player == null
+				? -1
+				: minecraft.player.getInventory().getSelectedSlot();
+
+		DrawingSession kept = BookSessions.restore(hand, slot, book);
+		DrawingSession fresh = kept != null ? null
+				: stored == null
+						? DrawingSession.fromPages(null, null)
+						: DrawingSession.fromPages(stored.pages(), InkColor.byIndex(stored.colorIndex()));
+
+		if (fresh != null) {
+			BookSessions.remember(fresh, hand, slot, book);
+		}
+
+		// Effectively final, because the widgets below capture it.
+		final DrawingSession session = kept != null ? kept : fresh;
 
 		int originX = invoke(backgroundX, screen);
 		int originY = invoke(backgroundY, screen);
