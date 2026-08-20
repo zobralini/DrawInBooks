@@ -49,6 +49,9 @@ public final class DrawCanvasWidget extends AbstractWidget {
 	private int lastPx = -1;
 	private int lastPy = -1;
 
+	/** Middle button state, so picking a color fires once per press. */
+	private boolean middleHeld;
+
 	public DrawCanvasWidget(int x, int y, DrawingSession session, IntSupplier currentPage) {
 		this(x, y, session, currentPage, true);
 	}
@@ -100,6 +103,16 @@ public final class DrawCanvasWidget extends AbstractWidget {
 		long window = Minecraft.getInstance().getWindow().handle();
 		boolean left = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
 		boolean right = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
+		boolean middle = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
+
+		// Middle click takes the color under the cursor. On the press edge
+		// only: this runs every frame, and holding the button should not keep
+		// re-picking as the cursor moves.
+		if (middle && !this.middleHeld && overCanvas && this.session.isDrawMode()) {
+			pickColor(px, py);
+		}
+
+		this.middleHeld = middle;
 
 		if (!left && !right) {
 			this.strokeActive = false;
@@ -147,6 +160,25 @@ public final class DrawCanvasWidget extends AbstractWidget {
 
 		this.lastPx = px;
 		this.lastPy = py;
+	}
+
+	/**
+	 * Switches the pen to the ink already on this pixel. Blank pixels are
+	 * ignored rather than treated as "pick the eraser" - the eraser is one
+	 * click away and silently swapping tools would be a surprise.
+	 */
+	private void pickColor(int px, int py) {
+		byte[] page = this.session.peekPage(this.currentPage.getAsInt());
+
+		if (page == null) {
+			return;
+		}
+
+		int value = PageBitmaps.getColor(page, px, py);
+
+		if (value != PageBitmaps.BLANK) {
+			this.session.setInkColor(InkColor.byPixelValue(value));
+		}
 	}
 
 	/** Never consume mouse events - screen-level blocking handles draw mode. */

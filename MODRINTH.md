@@ -62,12 +62,13 @@ the book, and nothing else about the game changes.
 - **Undo**, 7 steps deep
 - Drawings live on the book itself, so they travel with it through chests,
   trades and shulker boxes, and they survive **signing** — a finished book
-  shows its drawing when read
+  shows its drawing when read, in your hands or standing in a **lectern**
 
 | Action | Result |
 |---|---|
 | Left click / drag | draw with the selected tool |
 | Right click | erase, whichever tool is selected |
+| Middle click | pick the ink under the cursor |
 | Ctrl + click a tool | brush one step bigger |
 | Alt + click a tool | brush one step smaller |
 | Shift + click the pen | fill the whole page |

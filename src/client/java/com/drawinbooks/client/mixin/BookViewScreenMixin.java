@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.BookViewScreen;
+import net.minecraft.client.gui.screens.inventory.LecternScreen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -19,29 +20,42 @@ import net.minecraft.world.item.Items;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Renders drawings when a signed book is read. Without this, a written book
- * shows its text but no drawing - the reading screen is a different class
- * from the editing one.
+ * Renders drawings when a book is read - held in the hand, or standing in a
+ * lectern. Without this a written book shows its text but no drawing, because
+ * the reading screen is a different class from the editing one.
  *
  * <p>Drawn from {@code afterExtract}, i.e. after everything else on the
  * screen, so the drawing sits on top of the page text exactly as it does
  * while editing. A widget would be drawn before the screen's own text.
  *
- * <p>The screen only carries the book's text ({@code BookAccess}), not the
- * ItemStack it came from, so the drawing is read off the book the player is
- * holding. That covers reading a signed book from the hand; a book placed in
- * a lectern (which uses a subclass of this screen) is not covered yet and
- * would need the stack passed down from the lectern block entity.
+ * <p>The screen carries only the book's text ({@code BookAccess}), never the
+ * ItemStack it came from, so the stack has to be found some other way. For a
+ * book in the hand that means looking at what the player is holding. For a
+ * lectern it means the menu: {@link LecternScreen} extends this screen and its
+ * {@code LecternMenu} does have the stack, which is the whole reason lecterns
+ * can be supported at all.
  */
 @Mixin(BookViewScreen.class)
 public abstract class BookViewScreenMixin extends Screen {
 	@Shadow
 	private int currentPage;
+
+	/** The stack the pages below were decoded from, for change detection. */
+	@Unique
+	private ItemStack drawinbooks$decodedFrom;
+
+	@Unique
+	private List<byte[]> drawinbooks$pages;
+
+	/** Bumped on every re-decode, to invalidate the cached run geometry. */
+	@Unique
+	private int drawinbooks$revision;
 
 	protected BookViewScreenMixin(Component title) {
 		super(title);
@@ -55,38 +69,60 @@ public abstract class BookViewScreenMixin extends Screen {
 		ScreenEvents.remove(self).register(screen -> BookScreenScale.restore());
 		BookScreenScale.enlarge(this);
 
-		ItemStack book = drawinbooks$heldBook();
-
-		if (book == null) {
-			return;
-		}
-
-		DrawingBlob.Decoded stored = BookDrawingStorage.read(book).orElse(null);
-
-		if (stored == null) {
-			return;
-		}
-
-		List<byte[]> pages = stored.pages();
-
-		// A reader never edits, so the geometry is built once and replayed -
-		// the revision passed in is constant.
 		CanvasRenderer.RunCache cache = new CanvasRenderer.RunCache();
 
 		ScreenEvents.afterExtract(self).register((screen, graphics, mouseX, mouseY, tickProgress) -> {
+			drawinbooks$refresh();
+
+			List<byte[]> pages = this.drawinbooks$pages;
 			int page = this.currentPage;
 
-			if (page >= 0 && page < pages.size()) {
-				cache.render(
-						graphics,
-						BookLayout.bookLeft(this.width) + BookLayout.CANVAS_X,
-						BookLayout.CANVAS_Y,
-						pages.get(page), page, 0);
+			if (pages == null || page < 0 || page >= pages.size()) {
+				return;
 			}
+
+			cache.render(
+					graphics,
+					BookLayout.bookLeft(this.width) + BookLayout.CANVAS_X,
+					BookLayout.CANVAS_Y,
+					pages.get(page), page, this.drawinbooks$revision);
 		});
 	}
 
-	private ItemStack drawinbooks$heldBook() {
+	/**
+	 * Decodes the drawing, but only when the book has actually changed.
+	 *
+	 * <p>Checked per frame rather than once at init because a lectern's book
+	 * can be swapped out underneath an open screen - the screen handles that
+	 * itself and stays open. The check is a reference comparison; decoding only
+	 * happens when the stack is genuinely a different one.
+	 */
+	@Unique
+	private void drawinbooks$refresh() {
+		ItemStack book = drawinbooks$book();
+
+		if (book == this.drawinbooks$decodedFrom) {
+			return;
+		}
+
+		this.drawinbooks$decodedFrom = book;
+		this.drawinbooks$revision++;
+
+		DrawingBlob.Decoded stored = book == null
+				? null
+				: BookDrawingStorage.read(book).orElse(null);
+
+		this.drawinbooks$pages = stored == null ? null : stored.pages();
+	}
+
+	/** The book this screen is showing, or null if it cannot be found. */
+	@Unique
+	private ItemStack drawinbooks$book() {
+		if ((Object) this instanceof LecternScreen lectern) {
+			ItemStack book = lectern.getMenu().getBook();
+			return BookDrawingStorage.isBook(book) ? book : null;
+		}
+
 		LocalPlayer player = this.minecraft == null ? null : this.minecraft.player;
 
 		if (player == null) {

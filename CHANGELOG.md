@@ -2,9 +2,27 @@
 
 ## 1.2.0
 
-Two bug fixes, both of which could lose work. No format or protocol change, so
-a 1.1.0 server or plugin still works with this — but the two are still worth
-keeping in step.
+Lecterns, a color picker, and two bug fixes that could both lose work. No
+format or protocol change, so a 1.1.0 server or plugin still works with this —
+but the two are still worth keeping in step.
+
+### Lecterns show drawings
+
+Put a drawn book in a lectern and the drawing is there, for anyone who reads
+it. This was the one gap the README admitted to: the reading screen only ever
+receives a book's *text*, never the item it came from, so there was nothing to
+read a drawing off. A lectern turned out to be the easy case rather than the
+hard one — its menu does carry the item.
+
+A lectern's book can be swapped while the screen stays open, so the book is
+re-checked each frame and re-decoded only when it is actually a different one.
+
+### Middle click picks the color
+
+Middle-click any ink on the page and the pen switches to it, instead of cycling
+through five colors until you land on the right one. Blank pixels are ignored
+rather than switching to the eraser — silently swapping tools would be a
+surprise.
 
 ### Fixed: alt-tab and fullscreen threw away the drawing in progress
 

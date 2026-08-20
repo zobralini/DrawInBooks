@@ -49,6 +49,7 @@ yellow. Clicking a tool selects it; held modifiers then act on it:
 | Shift + click pen | flood the whole page with ink |
 | Shift + click eraser | wipe the whole page |
 | Right mouse button | erase, whichever tool is selected |
+| Middle mouse button | take the ink under the cursor as the pen color |
 | `█` button | cycle the pen color: red → black → blue → green → yellow |
 | `ⓒ` button, or Ctrl + C | copy the whole page you are looking at |
 | `ⓟ` button, or Ctrl + V | stamp it onto this page, in this book or another |
@@ -89,8 +90,8 @@ canvas only — clicks on it no longer move the text cursor and typing no longer
 edits text (Escape still closes). The page background stays untouched, and
 text and drawings remain independent layers.
 
-Signed books are rendered by a second mixin on `BookViewScreen`, which reads
-the drawing off the book in the player's hand and draws it from
+Signed books are rendered by a second mixin on `BookViewScreen`, covering both
+a book held in the hand and one standing in a lectern. It draws from
 `ScreenEvents.afterExtract` — i.e. after everything else, so the drawing sits
 *above* the page text exactly as it does while editing. (A widget would be
 drawn before the screen paints its own text.)
@@ -244,6 +245,13 @@ No partial parsing, no clamping, no crash. (The codec deliberately falls back
 to empty instead of returning a decode error, because a hard error inside an
 item-component codec can make the whole ItemStack unreadable and destroy the
 book on chunk load.)
+
+**Lecterns** — `LecternScreen` extends the reading screen, so it gets the same
+drawing layer. The difference is where the book comes from: a held book is
+found on the player, while a lectern's is on its `LecternMenu`, which does
+carry the `ItemStack`. Because a lectern's book can be swapped while the screen
+stays open, the stack is re-checked each frame and re-decoded only when it is
+genuinely a different one — a reference comparison per frame, not a parse.
 
 **Rendering** — ink pixels are drawn as plain GUI fills (batched per
 horizontal row-run) via the 26.2 `GuiGraphicsExtractor`. The spec suggested a
@@ -422,8 +430,6 @@ Everything below has been checked on a real client, and on a server, before
 
 ## Known limits
 
-- **Lecterns** don't show drawings. That screen never gets the `ItemStack`, so
-  the stack would have to be handed down from the lectern block entity.
 - **Five ink colors**, not more. A sixth still fits in three bits, but a
   seventh would mean 4 bits per pixel and another third on top of every book —
   see [Size](#size-and-the-chunk-ban-question).

@@ -99,6 +99,22 @@ public final class DrawingSession {
 		}
 	}
 
+	/**
+	 * Switches the pen to a specific ink - what the middle-click picker does.
+	 * Like cycling, this only affects future strokes.
+	 */
+	public void setInkColor(InkColor color) {
+		if (color == null || color == this.inkColor) {
+			return;
+		}
+
+		this.inkColor = color;
+
+		if (drawnPageCount() > 0) {
+			this.dirty = true; // the "last used color" hint is worth saving
+		}
+	}
+
 	public Tool tool() {
 		return this.tool;
 	}
