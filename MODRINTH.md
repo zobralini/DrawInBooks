@@ -151,7 +151,7 @@ There's a full breakdown, including measured compression figures, in the
 
 ## Requirements
 
-Minecraft 26.2 · Fabric Loader 0.19.3+ · **Fabric API 0.157.0+** · Java 25
+Minecraft 26.2 · Fabric Loader 0.19.3+ · **Fabric API 0.154.0+** · Java 25
 
 Free software under the **LGPL-3.0** — put it in a modpack, or build on it,
 without asking. [Source on GitHub](https://github.com/zobralini/DrawInBooks).

@@ -8,13 +8,16 @@
 API 0.153.0.
 
 The mod declared its Fabric API dependency as `*`, meaning any version at all.
-That is not true and never was: it is built against 0.157.0 and uses screen
-events that an older build does not provide. The loader took the declaration at
-its word, started the game, and let it fall over the moment a book was opened.
+That was never true, and it turned something the loader could have caught
+before the game started into a crash the moment a book was opened.
 
-The dependency now says `>=0.157.0`, so an older Fabric API produces a clear
-message before the game starts instead of a crash during it. If you hit this,
-updating Fabric API fixes it.
+The bound is now `>=0.154.0`, and that number is not a guess: `allowCharType`
+was *added* to Fabric API in FabricMC/fabric#4948 and first shipped as
+`0.154.0+26.2`. Everything else this mod uses is older than that, so 0.154.0 is
+the real floor rather than simply the version it happens to be built against.
+The report came from 0.153.0 — one release short.
+
+If you hit this, updating Fabric API fixes it.
 
 ## 1.3.0
 

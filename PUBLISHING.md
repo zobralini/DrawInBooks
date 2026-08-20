@@ -66,8 +66,11 @@ written to be pasted straight in. Short version: name *Draw In Books*, slug
 26.2, upload `drawinbooks-1.3.1.jar` as a **release** with Fabric API as a
 required dependency, and attach the Paper plugin jar as a second file.
 
-On Modrinth, set the Fabric API dependency to **0.157.0 or newer** — that is
-what the mod is built against, and an older one crashes.
+On Modrinth, set the Fabric API dependency to **0.154.0 or newer**. That bound
+is not the version this is built against — it is the version that first shipped
+`ScreenKeyboardEvents.allowCharType`, added in FabricMC/fabric#4948 and
+released as `0.154.0+26.2`. Everything else this mod touches is older than
+that.
 
 If the project already exists on Modrinth from an earlier upload, the license
 field has to be changed there by hand — Modrinth does not read it from the jar.
