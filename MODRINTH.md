@@ -24,10 +24,10 @@
 
 | Field | Value |
 |---|---|
-| File | `build/libs/drawinbooks-1.2.0.jar` (not `-sources`) |
-| Additional file | `paper/build/libs/drawinbooks-paper-1.2.0.jar` |
-| Version number | `1.2.0` |
-| Version name | `1.2.0` |
+| File | `build/libs/drawinbooks-1.3.0.jar` (not `-sources`) |
+| Additional file | `paper/build/libs/drawinbooks-paper-1.3.0.jar` |
+| Version number | `1.3.0` |
+| Version name | `1.3.0` |
 | Release channel | **Release** |
 | Loaders | Fabric |
 | Game versions | 26.2 |
@@ -36,7 +36,7 @@
 Release channel, not beta: every path in the mod has now been used in a real
 game — singleplayer, a Fabric server, a Paper server, and alongside Scribble.
 
-Version changelog — paste the `1.2.0` section from `CHANGELOG.md`.
+Version changelog — paste the `1.3.0` section from `CHANGELOG.md`.
 
 ---
 

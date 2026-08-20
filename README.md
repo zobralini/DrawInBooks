@@ -251,8 +251,14 @@ drawing layer. The difference is where the book comes from: a held book is
 found on the player, while a lectern's is on its `LecternMenu`, which does
 carry the `ItemStack`. That is matched through the `MenuAccess` interface
 rather than the vanilla screen class, so it survives another mod replacing the
-lectern screen — which Scribble does, and which is why lecterns worked in a
-development client and not in a real one. Because a lectern's book can be swapped while the screen
+lectern screen — which Scribble does, with its own `ScribbleLecternScreen`.
+
+The book is looked up **every frame** rather than once when the screen is
+built, and re-decoded only when the stack reference changes. That is not an
+optimisation detail but the thing that makes lecterns work at all: the
+lectern's contents arrive from the server after the screen has opened, so a
+one-shot lookup finds an empty lectern and never hears about the book landing.
+It also means swapping the book in an open lectern updates the drawing. Because a lectern's book can be swapped while the screen
 stays open, the stack is re-checked each frame and re-decoded only when it is
 genuinely a different one — a reference comparison per frame, not a parse.
 

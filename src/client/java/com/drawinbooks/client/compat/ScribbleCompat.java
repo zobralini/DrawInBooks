@@ -10,6 +10,7 @@ import com.drawinbooks.client.draw.BookLayout;
 import com.drawinbooks.client.draw.BookScreenScale;
 import com.drawinbooks.client.draw.BookSessions;
 import com.drawinbooks.client.draw.BookSource;
+import com.drawinbooks.client.draw.CanvasRenderer;
 import com.drawinbooks.client.draw.DrawCanvasWidget;
 import com.drawinbooks.client.draw.DrawToolbar;
 import com.drawinbooks.client.draw.DrawingPersistence;
@@ -127,25 +128,29 @@ public final class ScribbleCompat {
 		ScreenEvents.remove(screen).register(closed -> BookScreenScale.restore());
 		BookScreenScale.enlarge(screen);
 
-		InteractionHand hand = findBookHand(minecraft, editable);
+		int originX = invoke(backgroundX, screen);
+		int originY = invoke(backgroundY, screen);
+		int pagesShown = Math.max(1, readInt(pagesToShowField, screen, 1));
 
-		// Reading goes through BookSource, which also covers a lectern - where
-		// the player's hands are usually empty and the book is on the menu.
-		// Editing is always a book in hand, and the hand matters for saving.
-		ItemStack book = editable
-				? (minecraft.player == null ? ItemStack.EMPTY : minecraft.player.getItemInHand(hand))
-				: BookSource.readingBook(screen);
+		// A reading screen looks the book up every frame instead of once here,
+		// which is what makes lecterns work: the lectern's contents arrive from
+		// the server *after* the screen opens, so at this point there is
+		// usually no book to find yet, and nothing re-runs when it lands.
+		if (!editable) {
+			attachReader(screen, originX, originY, pagesShown);
+			return;
+		}
+
+		InteractionHand hand = findBookHand(minecraft);
+		ItemStack book = minecraft.player == null
+				? ItemStack.EMPTY
+				: minecraft.player.getItemInHand(hand);
 
 		if (!BookDrawingStorage.isBook(book)) {
 			return;
 		}
 
 		DrawingBlob.Decoded stored = BookDrawingStorage.read(book).orElse(null);
-
-		// Reading a book only needs a canvas, and only if there is one.
-		if (!editable && stored == null) {
-			return;
-		}
 
 		// Scribble's screen is rebuilt on alt-tab and fullscreen just like the
 		// vanilla one, and a rebuilt screen is a new object, so the working
@@ -154,31 +159,24 @@ public final class ScribbleCompat {
 				? -1
 				: minecraft.player.getInventory().getSelectedSlot();
 
-		// Only an editing screen has a session worth keeping; a reader must
-		// never adopt one, or a lectern could show a drawing from the book in
-		// the player's own hand.
-		DrawingSession kept = editable ? BookSessions.restore(hand, slot, book) : null;
+		DrawingSession kept = BookSessions.restore(hand, slot, book);
 		DrawingSession fresh = kept != null ? null
 				: stored == null
 						? DrawingSession.fromPages(null, null)
 						: DrawingSession.fromPages(stored.pages(), InkColor.byIndex(stored.colorIndex()));
 
-		if (fresh != null && editable) {
+		if (fresh != null) {
 			BookSessions.remember(fresh, hand, slot, book);
 		}
 
 		// Effectively final, because the widgets below capture it.
 		final DrawingSession session = kept != null ? kept : fresh;
 
-		int originX = invoke(backgroundX, screen);
-		int originY = invoke(backgroundY, screen);
-		int pagesShown = Math.max(1, readInt(pagesToShowField, screen, 1));
-
 		List<AbstractWidget> widgets = Screens.getWidgets(screen);
 
 		// Read-only where a drawing could not be saved anyway: the canvas still
 		// shows what is on the book, it just takes no input.
-		boolean drawable = editable && ServerSupport.editingAllowed();
+		boolean drawable = ServerSupport.editingAllowed();
 
 		// One canvas per visible page - Scribble can show two at once.
 		for (int i = 0; i < pagesShown; i++) {
@@ -190,10 +188,6 @@ public final class ScribbleCompat {
 					session,
 					() -> readInt(currentPageField, screen, 0) + pageOffset,
 					drawable));
-		}
-
-		if (!editable) {
-			return;
 		}
 
 		int pagesGuarded = pagesShown;
@@ -231,16 +225,91 @@ public final class ScribbleCompat {
 		});
 	}
 
-	private static InteractionHand findBookHand(Minecraft minecraft, boolean editable) {
+	/**
+	 * The read-only half: draw whatever is on the book, take no input.
+	 *
+	 * <p>Deliberately not built out of widgets and a session like the editing
+	 * half. A reader has nothing to edit, and more importantly the book it is
+	 * showing may not exist yet - a lectern's contents arrive from the server
+	 * after the screen is already open, and Scribble's lectern screen handles
+	 * that itself without re-running init. Looking the book up per frame is the
+	 * only way to notice it arriving, and it is also what makes swapping the
+	 * book in an open lectern work.
+	 *
+	 * <p>Drawn from {@code afterExtract}, so it lands above Scribble's text,
+	 * the same way the vanilla reading screen is handled.
+	 */
+	private static void attachReader(Screen screen, int originX, int originY, int pagesShown) {
+		CanvasRenderer.RunCache[] caches = new CanvasRenderer.RunCache[pagesShown];
+
+		for (int i = 0; i < pagesShown; i++) {
+			caches[i] = new CanvasRenderer.RunCache();
+		}
+
+		Reader reader = new Reader();
+
+		ScreenEvents.afterExtract(screen).register((s, graphics, mouseX, mouseY, tickProgress) -> {
+			List<byte[]> pages = reader.pages(screen);
+
+			if (pages == null) {
+				return;
+			}
+
+			int first = readInt(currentPageField, screen, 0);
+
+			for (int i = 0; i < pagesShown; i++) {
+				int page = first + i;
+
+				if (page < 0 || page >= pages.size()) {
+					continue;
+				}
+
+				caches[i].render(
+						graphics,
+						originX + PAGE_OFFSET_X + i * PAGE_STRIDE_X + BookLayout.CANVAS_NUDGE_X,
+						originY + PAGE_OFFSET_Y + BookLayout.CANVAS_NUDGE_Y,
+						pages.get(page), page, reader.revision);
+			}
+		});
+	}
+
+	/** Decodes the book being read, and only when it actually changes. */
+	private static final class Reader {
+		private ItemStack decodedFrom;
+		private List<byte[]> pages;
+		private int revision;
+
+		private List<byte[]> pages(Screen screen) {
+			ItemStack book = BookSource.readingBook(screen);
+
+			if (book == this.decodedFrom) {
+				return this.pages;
+			}
+
+			this.decodedFrom = book;
+			this.revision++;
+
+			DrawingBlob.Decoded stored = BookDrawingStorage.read(book).orElse(null);
+			this.pages = stored == null ? null : stored.pages();
+
+			return this.pages;
+		}
+	}
+
+	/**
+	 * Which hand the book being edited is in. Only editing needs this - a
+	 * reader finds its book through {@link BookSource}, which also covers the
+	 * case of it not being in a hand at all.
+	 */
+	private static InteractionHand findBookHand(Minecraft minecraft) {
 		LocalPlayer player = minecraft.player;
 
 		if (player == null) {
 			return InteractionHand.MAIN_HAND;
 		}
 
-		var wanted = editable ? Items.WRITABLE_BOOK : Items.WRITTEN_BOOK;
-
-		if (!player.getMainHandItem().is(wanted) && player.getOffhandItem().is(wanted)) {
+		if (!player.getMainHandItem().is(Items.WRITABLE_BOOK)
+				&& player.getOffhandItem().is(Items.WRITABLE_BOOK)) {
 			return InteractionHand.OFF_HAND;
 		}
 

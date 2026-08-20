@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.3.0
+
+### Fixed: lecterns showed no drawing when Scribble was installed
+
+1.2.0 added lecterns and they worked — until Scribble was in the mods folder,
+which is where most people actually have this mod.
+
+Two separate causes. Scribble replaces the lectern screen with its own class,
+so matching on vanilla's screen class never fired; that is now matched on the
+screen's *menu* instead, which any replacement has to keep for the lectern to
+work at all.
+
+The second cause is the one that mattered: a lectern's contents arrive from the
+server **after** the screen has already opened. Looking for the book once, while
+building the screen, finds nothing — and nothing runs again when it lands. The
+reading path now looks the book up every frame, which also means swapping the
+book in an open lectern updates the drawing immediately.
+
+Reading a book through Scribble no longer builds an editing session it has no
+use for, either.
+
 ## 1.2.0
 
 Lecterns, a color picker, and two bug fixes that could both lose work. No
@@ -17,9 +38,7 @@ hard one — its menu does carry the item.
 A lectern's book can be swapped while the screen stays open, so the book is
 re-checked each frame and re-decoded only when it is actually a different one.
 
-This works with Scribble installed too: the lectern is matched by the screen's
-menu rather than by the vanilla screen class, so a replaced screen still counts
-as a lectern.
+This shipped broken with Scribble installed; fixed in 1.3.0.
 
 ### Middle click picks the color
 

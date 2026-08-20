@@ -26,7 +26,7 @@ The mod:
 gradlew build
 ```
 
-Upload `build/libs/drawinbooks-1.2.0.jar` — **not** the `-sources` one. The
+Upload `build/libs/drawinbooks-1.3.0.jar` — **not** the `-sources` one. The
 same jar works on both a client and a Fabric server.
 
 The Paper plugin is a separate Gradle project, because it builds against the
@@ -38,7 +38,7 @@ cd paper
 .\gradlew build
 ```
 
-That produces `paper/build/libs/drawinbooks-paper-1.2.0.jar`. Upload it as a
+That produces `paper/build/libs/drawinbooks-paper-1.3.0.jar`. Upload it as a
 second file on the same Modrinth version, or as its own project — Modrinth
 allows additional files per version, which is the simpler option.
 
@@ -54,7 +54,7 @@ redeployed alongside the mod. A 1.1.0-or-newer client will not save to a 1.0.x
 plugin — the channel name changed on purpose, so the mismatch is detected and
 logged instead of silently corrupting anything.
 
-**1.2.0 is not.** It touches neither the format nor the protocol, so a 1.1.0
+**Nothing since is.** 1.2.0 and 1.3.0 touch neither the format nor the protocol, so a 1.1.0
 plugin still works. Rebuild it anyway to keep the pair obviously matched.
 
 ## 3. Create the Modrinth project
@@ -62,7 +62,7 @@ plugin still works. Rebuild it anyway to keep the pair obviously matched.
 Every field value and the full page body are in **[MODRINTH.md](MODRINTH.md)**,
 written to be pasted straight in. Short version: name *Draw In Books*, slug
 `draw-in-books`, **LGPL-3.0-only**, client required / server optional, Fabric
-26.2, upload `drawinbooks-1.2.0.jar` as a **release** with Fabric API as a
+26.2, upload `drawinbooks-1.3.0.jar` as a **release** with Fabric API as a
 required dependency, and attach the Paper plugin jar as a second file.
 
 If the project already exists on Modrinth from an earlier upload, the license
