@@ -24,10 +24,10 @@
 
 | Field | Value |
 |---|---|
-| File | `build/libs/drawinbooks-1.3.0.jar` (not `-sources`) |
-| Additional file | `paper/build/libs/drawinbooks-paper-1.3.0.jar` |
-| Version number | `1.3.0` |
-| Version name | `1.3.0` |
+| File | `build/libs/drawinbooks-1.3.1.jar` (not `-sources`) |
+| Additional file | `paper/build/libs/drawinbooks-paper-1.3.1.jar` |
+| Version number | `1.3.1` |
+| Version name | `1.3.1` |
 | Release channel | **Release** |
 | Loaders | Fabric |
 | Game versions | 26.2 |
@@ -36,7 +36,7 @@
 Release channel, not beta: every path in the mod has now been used in a real
 game — singleplayer, a Fabric server, a Paper server, and alongside Scribble.
 
-Version changelog — paste the `1.3.0` section from `CHANGELOG.md`.
+Version changelog — paste the `1.3.1` section from `CHANGELOG.md`.
 
 ---
 
@@ -151,7 +151,7 @@ There's a full breakdown, including measured compression figures, in the
 
 ## Requirements
 
-Minecraft 26.2 · Fabric Loader 0.19.3+ · Fabric API · Java 25
+Minecraft 26.2 · Fabric Loader 0.19.3+ · **Fabric API 0.157.0+** · Java 25
 
 Free software under the **LGPL-3.0** — put it in a modpack, or build on it,
 without asking. [Source on GitHub](https://github.com/zobralini/DrawInBooks).

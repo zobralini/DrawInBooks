@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.1
+
+### Fixed: crash on an older Fabric API
+
+`NoSuchMethodError: ScreenKeyboardEvents.allowCharType` — reported on Fabric
+API 0.153.0.
+
+The mod declared its Fabric API dependency as `*`, meaning any version at all.
+That is not true and never was: it is built against 0.157.0 and uses screen
+events that an older build does not provide. The loader took the declaration at
+its word, started the game, and let it fall over the moment a book was opened.
+
+The dependency now says `>=0.157.0`, so an older Fabric API produces a clear
+message before the game starts instead of a crash during it. If you hit this,
+updating Fabric API fixes it.
+
 ## 1.3.0
 
 ### Fixed: lecterns showed no drawing when Scribble was installed
